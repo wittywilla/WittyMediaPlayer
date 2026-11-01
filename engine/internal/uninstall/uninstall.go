@@ -244,6 +244,54 @@ func (r Result) Report() string {
 	return b.String()
 }
 
+// Summary is the result for a person to read in a dialog: what's gone in a few plain lines, then
+// in full what stayed, and why. Report has every registry key.
+func (r Result) Summary() string {
+	var b strings.Builder
+	shortcuts, registry := 0, 0
+	var lines []string
+	for _, it := range r.Removed {
+		switch {
+		case it.step == stepStop || it.step == stepInstaller:
+		case it.Kind == "shortcut":
+			shortcuts++
+		case strings.HasPrefix(it.Name, "HKCU") || strings.HasPrefix(it.Name, "HKLM") || strings.Contains(it.Name, "registry entries"):
+			registry++
+		default:
+			lines = append(lines, fmt.Sprintf("  %s: %s", it.Kind, it.Name))
+		}
+	}
+	if shortcuts > 0 {
+		lines = append(lines, fmt.Sprintf("  %s", count(shortcuts, "shortcut")))
+	}
+	if registry > 0 {
+		lines = append(lines, "  its entries in the registry, and the file types it was set to open")
+	}
+	if len(lines) > 0 {
+		b.WriteString("Removed:\n" + strings.Join(lines, "\n") + "\n")
+	}
+	if len(r.Failed) > 0 {
+		b.WriteString("\nCouldn't be removed:\n")
+		for _, f := range r.Failed {
+			fmt.Fprintf(&b, "  %s: %s (%s)\n", f.Kind, f.Name, f.Error)
+		}
+	}
+	if len(r.Kept) > 0 {
+		b.WriteString("\nLeft in place:\n")
+		for _, k := range r.Kept {
+			fmt.Fprintf(&b, "  %s: %s\n", k.Name, k.Reason)
+		}
+	}
+	return b.String()
+}
+
+func count(n int, what string) string {
+	if n == 1 {
+		return "1 " + what
+	}
+	return fmt.Sprintf("%d %ss", n, what)
+}
+
 // Describe is what a plan covers, in plain words, for asking.
 func (pl *Plan) Describe(g Group) string {
 	var b strings.Builder

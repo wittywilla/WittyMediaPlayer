@@ -13,7 +13,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 
 	"github.com/wittywilla/wittymediaplayer/engine/internal/uninstall"
 )
@@ -126,9 +125,9 @@ func work(e *uninstall.Env, a uninstall.Args) int {
 	if !res.OK() {
 		text = "Most of WittyMediaPlayer was removed, but some of it couldn't be."
 	}
-	text += "\n\n" + shorten(res.Report(), 30)
+	text += "\n\n" + shorten(res.Summary(), 24)
 	if a.Report != "" && reportErr == nil {
-		text += "\n\nThe full list is in " + filepath.ToSlash(a.Report)
+		text += "\n\nThe full list is in this file:\n" + a.Report
 	}
 	show(title, text)
 	return code

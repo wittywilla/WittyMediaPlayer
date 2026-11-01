@@ -23,6 +23,9 @@ const (
 	classesKey      = `Software\Classes`
 	applicationsKey = classesKey + `\Applications\WittyMediaPlayer.exe`
 	shellFoldersKey = `Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders`
+	appPathsParent  = `Software\Microsoft\Windows\CurrentVersion\App Paths`
+	uninstallParent = `Software\Microsoft\Windows\CurrentVersion\Uninstall`
+	applications    = classesKey + `\Applications`
 	// What Windows itself notes about programs, for this account only.
 	fileExtsKey = `Software\Microsoft\Windows\CurrentVersion\Explorer\FileExts`
 	toastsKey   = `Software\Microsoft\Windows\CurrentVersion\ApplicationAssociationToasts`
@@ -73,10 +76,18 @@ func planRegistry(e *Env, pl *Plan) {
 			pl.add(Item{Kind: "Open with file types", Name: hive + `\` + classesKey + `\<type>\OpenWithProgids`, Group: GroupProgram, Admin: admin, step: stepFiles,
 				remove: func() error { return removeOpenWith(e, hive) }})
 		}
-		// Ours went, so if nothing is left under the publisher's key, that goes as well.
-		if e.Sys.RegKeyExists(hive, publisherKey) {
-			pl.add(Item{Kind: "registry key", Name: hive + `\` + publisherKey, Group: GroupProgram, Admin: admin, step: stepEmptyFolders,
-				remove: func() error { return pruneKey(e, hive, publisherKey) }})
+		// Ours went, so if nothing is left under the publisher's key, that goes as well. In this
+		// account's registry the keys that held ours may only have been there for that. The
+		// computer's have always been there, for everything else on it.
+		if e.Sys.RegKeyExists(hive, productKey) || e.Sys.RegKeyExists(hive, UninstallKey) {
+			keys := []string{publisherKey}
+			if hive == "HKCU" {
+				keys = append(keys, registeredApps, applications, appPathsParent, uninstallParent)
+			}
+			for _, key := range keys {
+				pl.add(Item{Kind: "registry key", Name: hive + `\` + key, Group: GroupProgram, Admin: admin, step: stepEmptyFolders,
+					remove: func() error { return pruneKey(e, hive, key) }})
+			}
 		}
 	}
 	notes := findWindowsNotes(e, programFolders(e))
@@ -137,7 +148,8 @@ func removeOpenWith(e *Env, hive string) error {
 	return errors.Join(errs...)
 }
 
-// pruneKey removes a key that has nothing in it. RegValueNames counts a default value too.
+// pruneKey removes a key that has nothing in it. RegValueNames counts a default value too. Only
+// what's in the plan's own list of names is ever asked about.
 func pruneKey(e *Env, hive, key string) error {
 	if !e.Sys.RegKeyExists(hive, key) || len(e.Sys.RegValueNames(hive, key)) > 0 || len(e.Sys.RegSubkeys(hive, key)) > 0 {
 		return nil

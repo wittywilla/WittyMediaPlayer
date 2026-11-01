@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"time"
 )
 
 // Args is how the uninstaller is told what to do.
@@ -118,9 +117,10 @@ func (a Args) Flags() []string {
 	return f
 }
 
-// ReportPath is a place for the list of what was removed that outlives everything removed.
+// ReportPath is a place for the list of what was removed that outlives everything removed. Its name
+// is short so that a dialog can show it whole, and a later uninstall replaces it.
 func ReportPath() string {
-	return filepath.Join(os.TempDir(), "WittyMediaPlayer-uninstall-"+time.Now().Format("20060102-150405")+".txt")
+	return filepath.Join(os.TempDir(), "WittyMediaPlayer-uninstall.txt")
 }
 
 // WriteReport keeps the result where it was asked for. It appears all at once, so that a script

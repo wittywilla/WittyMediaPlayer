@@ -252,6 +252,58 @@ func TestFullRemovalPerUser(t *testing.T) {
 	}
 }
 
+func TestTheSummaryIsForPeople(t *testing.T) {
+	m := newMachine(t)
+	fillPackage(t, m.perUser)
+	m.fillData(t)
+	m.fillRegistry("HKCU")
+	m.msiRemoves(t, "HKCU", m.perUser)
+	mine := filepath.Join(m.perUser, "my-own-file.txt")
+	write(t, mine, "x")
+	write(t, filepath.Join(m.home, "Desktop", appName+".lnk"), "x")
+	write(t, filepath.Join(m.vars["APPDATA"], "Microsoft", "Windows", "Start Menu", "Programs", appName+".lnk"), "x")
+	r := Execute(MakePlan(m.env), Options{RemoveData: true})
+	s := r.Summary()
+	for _, want := range []string{m.perUser, "2 shortcuts", "entries in the registry", mine, filepath.Join(m.roaming, "WittyMediaPlayer.ini")} {
+		if !strings.Contains(s, want) {
+			t.Errorf("the summary doesn't say %q:\n%s", want, s)
+		}
+	}
+	for _, not := range []string{"HKCU", "{1111", "anything running"} {
+		if strings.Contains(s, not) {
+			t.Errorf("the summary has %q in it, which isn't for people:\n%s", not, s)
+		}
+	}
+	if !strings.Contains(r.Report(), UninstallKey) {
+		t.Errorf("the full report lost a registry key:\n%s", r.Report())
+	}
+}
+
+func TestKeysLeftEmptyGoAndOthersStay(t *testing.T) {
+	m := newMachine(t)
+	m.fillRegistry("HKCU")
+	m.sys.answers["msiexec.exe /x"] = func() error { return nil }
+	m.sys.set("HKCU", uninstallParent+`\SomeOtherProgram`, "DisplayName", "x")
+	m.sys.set("HKCU", publisherKey+`\WittyMediaServer`, "Desktop", "1")
+	if r := Execute(MakePlan(m.env), Options{}); !r.OK() {
+		t.Fatal(r.Report())
+	}
+	for _, k := range []string{registeredApps, applications, appPathsParent} {
+		if m.sys.RegKeyExists("HKCU", k) {
+			t.Errorf("%s is empty and stayed", k)
+		}
+	}
+	if !m.sys.RegKeyExists("HKCU", uninstallParent+`\SomeOtherProgram`) {
+		t.Error("another program's entry went")
+	}
+	if !m.sys.RegKeyExists("HKCU", publisherKey+`\WittyMediaServer`) {
+		t.Error("the server's key went")
+	}
+	if strings.Contains(Execute(MakePlan(m.env), Options{}).Report(), registeredApps) {
+		t.Error("it reports empty keys as things it removed")
+	}
+}
+
 func TestKeepingDataKeepsIt(t *testing.T) {
 	m := newMachine(t)
 	fillPackage(t, m.perUser)
