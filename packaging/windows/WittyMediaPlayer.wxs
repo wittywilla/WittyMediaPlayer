@@ -8,7 +8,7 @@
   admin can skip the questions:
 
     msiexec /i x.msi /qn MSIINSTALLPERUSER=1 DESKTOPSHORTCUT=1
-    msiexec /i x.msi /qn MSIINSTALLPERUSER="" ASSOCDISC=""
+    msiexec /i x.msi /qn MSIINSTALLPERUSER="" ASSOCDISC=0
 
   Installed apps shows our own entry in place of the MSI's, because only that can ask whether to
   keep your settings: Uninstall WittyMediaPlayer.exe asks, and then removes the MSI as well.
@@ -58,16 +58,18 @@
     <Property Id="ASSOCDISC" Value="1" Secure="yes" />
 
     <!-- An upgrade keeps the last answers. Each is written with a dash after it, so "no" is there
-         to be read: an empty value isn't. -->
+         to be read, and anything but "1-" is a no: an empty value wouldn't be. -->
     <Property Id="WAS_DESKTOP"><RegistrySearch Id="WasDesktopUser" Root="HKCU" Key="Software\WittyWilla\WittyMediaPlayer" Name="ChoseDesktop" Type="raw" /><RegistrySearch Id="WasDesktopMachine" Root="HKLM" Key="Software\WittyWilla\WittyMediaPlayer" Name="ChoseDesktop" Type="raw" /></Property>
     <Property Id="WAS_VIDEO"><RegistrySearch Id="WasVideoUser" Root="HKCU" Key="Software\WittyWilla\WittyMediaPlayer" Name="ChoseVideo" Type="raw" /><RegistrySearch Id="WasVideoMachine" Root="HKLM" Key="Software\WittyWilla\WittyMediaPlayer" Name="ChoseVideo" Type="raw" /></Property>
     <Property Id="WAS_MUSIC"><RegistrySearch Id="WasMusicUser" Root="HKCU" Key="Software\WittyWilla\WittyMediaPlayer" Name="ChoseMusic" Type="raw" /><RegistrySearch Id="WasMusicMachine" Root="HKLM" Key="Software\WittyWilla\WittyMediaPlayer" Name="ChoseMusic" Type="raw" /></Property>
     <Property Id="WAS_DISC"><RegistrySearch Id="WasDiscUser" Root="HKCU" Key="Software\WittyWilla\WittyMediaPlayer" Name="ChoseDisc" Type="raw" /><RegistrySearch Id="WasDiscMachine" Root="HKLM" Key="Software\WittyWilla\WittyMediaPlayer" Name="ChoseDisc" Type="raw" /></Property>
-    <!-- These run once, wizard or not, so a change made in the wizard isn't then undone. -->
+    <!-- These run once, wizard or not, so a change made in the wizard isn't then undone. An action
+         that sets a property clears it by naming one that's never set: "{}" only means that to a
+         button in the wizard. -->
     <CustomAction Id="RestoreDesktop" Property="DESKTOPSHORTCUT" Value="1" Execute="firstSequence" />
-    <CustomAction Id="RestoreVideo" Property="ASSOCVIDEO" Value="{}" Execute="firstSequence" />
-    <CustomAction Id="RestoreMusic" Property="ASSOCMUSIC" Value="{}" Execute="firstSequence" />
-    <CustomAction Id="RestoreDisc" Property="ASSOCDISC" Value="{}" Execute="firstSequence" />
+    <CustomAction Id="RestoreVideo" Property="ASSOCVIDEO" Value="[NOTHING]" Execute="firstSequence" />
+    <CustomAction Id="RestoreMusic" Property="ASSOCMUSIC" Value="[NOTHING]" Execute="firstSequence" />
+    <CustomAction Id="RestoreDisc" Property="ASSOCDISC" Value="[NOTHING]" Execute="firstSequence" />
 
     <!-- Scope above starts this as just for this account, and Windows Installer then points
          Program Files at %LOCALAPPDATA%\Programs itself. MSIINSTALLPERUSER="" means everyone.
@@ -75,23 +77,23 @@
     <Property Id="INSTALLED_FOR_EVERYONE">
       <RegistrySearch Id="FindMachineInstall" Root="HKLM" Key="Software\Microsoft\Windows\CurrentVersion\Uninstall\WittyMediaPlayer" Name="ProductCode" Type="raw" />
     </Property>
-    <CustomAction Id="SetScope" Property="MSIINSTALLPERUSER" Value="{}" />
+    <CustomAction Id="SetScope" Property="MSIINSTALLPERUSER" Value="[NOTHING]" />
 
     <InstallUISequence>
       <AppSearch Sequence="10" />
       <Custom Action="SetScope" Sequence="11" Condition="INSTALLED_FOR_EVERYONE AND NOT Installed" />
       <Custom Action="RestoreDesktop" After="FindRelatedProducts" Condition="WIX_UPGRADE_DETECTED AND WAS_DESKTOP=&quot;1-&quot; AND NOT Installed" />
-      <Custom Action="RestoreVideo" After="RestoreDesktop" Condition="WIX_UPGRADE_DETECTED AND WAS_VIDEO=&quot;-&quot; AND NOT Installed" />
-      <Custom Action="RestoreMusic" After="RestoreVideo" Condition="WIX_UPGRADE_DETECTED AND WAS_MUSIC=&quot;-&quot; AND NOT Installed" />
-      <Custom Action="RestoreDisc" After="RestoreMusic" Condition="WIX_UPGRADE_DETECTED AND WAS_DISC=&quot;-&quot; AND NOT Installed" />
+      <Custom Action="RestoreVideo" After="RestoreDesktop" Condition="WIX_UPGRADE_DETECTED AND WAS_VIDEO AND WAS_VIDEO&lt;&gt;&quot;1-&quot; AND NOT Installed" />
+      <Custom Action="RestoreMusic" After="RestoreVideo" Condition="WIX_UPGRADE_DETECTED AND WAS_MUSIC AND WAS_MUSIC&lt;&gt;&quot;1-&quot; AND NOT Installed" />
+      <Custom Action="RestoreDisc" After="RestoreMusic" Condition="WIX_UPGRADE_DETECTED AND WAS_DISC AND WAS_DISC&lt;&gt;&quot;1-&quot; AND NOT Installed" />
     </InstallUISequence>
     <InstallExecuteSequence>
       <AppSearch Sequence="10" />
       <Custom Action="SetScope" Sequence="11" Condition="INSTALLED_FOR_EVERYONE AND NOT Installed" />
       <Custom Action="RestoreDesktop" After="FindRelatedProducts" Condition="WIX_UPGRADE_DETECTED AND WAS_DESKTOP=&quot;1-&quot; AND NOT Installed" />
-      <Custom Action="RestoreVideo" After="RestoreDesktop" Condition="WIX_UPGRADE_DETECTED AND WAS_VIDEO=&quot;-&quot; AND NOT Installed" />
-      <Custom Action="RestoreMusic" After="RestoreVideo" Condition="WIX_UPGRADE_DETECTED AND WAS_MUSIC=&quot;-&quot; AND NOT Installed" />
-      <Custom Action="RestoreDisc" After="RestoreMusic" Condition="WIX_UPGRADE_DETECTED AND WAS_DISC=&quot;-&quot; AND NOT Installed" />
+      <Custom Action="RestoreVideo" After="RestoreDesktop" Condition="WIX_UPGRADE_DETECTED AND WAS_VIDEO AND WAS_VIDEO&lt;&gt;&quot;1-&quot; AND NOT Installed" />
+      <Custom Action="RestoreMusic" After="RestoreVideo" Condition="WIX_UPGRADE_DETECTED AND WAS_MUSIC AND WAS_MUSIC&lt;&gt;&quot;1-&quot; AND NOT Installed" />
+      <Custom Action="RestoreDisc" After="RestoreMusic" Condition="WIX_UPGRADE_DETECTED AND WAS_DISC AND WAS_DISC&lt;&gt;&quot;1-&quot; AND NOT Installed" />
       <!-- Close what's running first, or the old copy keeps its files and an upgrade fails. -->
       <Custom Action="StopRunningApp" Before="RemoveExistingProducts" Condition="(WIX_UPGRADE_DETECTED OR REMOVE) AND NOT UPGRADINGPRODUCTCODE" />
     </InstallExecuteSequence>

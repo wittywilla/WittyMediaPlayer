@@ -61,14 +61,14 @@ msiexec /i WittyMediaPlayer-<version>-windows-amd64.msi /qn MSIINSTALLPERUSER=1
 ```
 
 ```bash
-msiexec /i WittyMediaPlayer-<version>-windows-amd64.msi /qn MSIINSTALLPERUSER="" DESKTOPSHORTCUT=1 ASSOCDISC=""
+msiexec /i WittyMediaPlayer-<version>-windows-amd64.msi /qn MSIINSTALLPERUSER="" DESKTOPSHORTCUT=1 ASSOCDISC=0
 ```
 
 | Property | Means | If you don't say |
 |---|---|---|
 | `MSIINSTALLPERUSER` | `1` just for this account; `""` for everyone (run it as an administrator) | just for this account |
 | `DESKTOPSHORTCUT` | `1` puts a shortcut on the desktop | none |
-| `ASSOCVIDEO`, `ASSOCMUSIC`, `ASSOCDISC` | `""` leaves that kind of file off the Open with list | listed |
+| `ASSOCVIDEO`, `ASSOCMUSIC`, `ASSOCDISC` | `0` leaves that kind of file off the Open with list | listed |
 
 An upgrade keeps the last answers to these, whatever a new command line says.
 
