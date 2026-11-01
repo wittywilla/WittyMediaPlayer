@@ -2,7 +2,7 @@
 # Gets everything WittyMediaPlayer's Windows build needs, for this user only: no
 # administrator rights, no accounts, nothing installed system-wide.
 #
-#   bash apps/wittymediaplayer/scripts/setup-toolchain.sh
+#   bash scripts/setup-toolchain.sh
 #
 # Needs Git for Windows (for this shell) and Python 3. It takes about ten minutes
 # and 4 GB. Everything lands in WMP_TOOLCHAIN (default ~/.wittymediaplayer-toolchain);

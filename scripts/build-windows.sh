@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # Builds WittyMediaPlayer for Windows amd64 into a portable folder and a zip.
 #
-#   bash apps/wittymediaplayer/scripts/setup-toolchain.sh    (once)
-#   bash apps/wittymediaplayer/scripts/build-windows.sh
+#   bash scripts/setup-toolchain.sh    (once)
+#   bash scripts/build-windows.sh
 #
-# The result lands in apps/wittymediaplayer/.build/ , which Git ignores:
+# The result lands in .build/ , which Git ignores:
 #   WittyMediaPlayer-<version>-windows-amd64/       run wittymediaplayer.exe from here
 #   WittyMediaPlayer-<version>-windows-amd64.zip    the same folder, to share
 #   source/                                         FFmpeg's source, to go beside the zip

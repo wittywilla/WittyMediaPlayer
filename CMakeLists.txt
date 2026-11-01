@@ -23,7 +23,8 @@ target_link_libraries(ffmpeg INTERFACE avformat avcodec avfilter swresample swsc
 # WittyVisualizer: its effects and its Qt host live in the plugin, shared with the server's
 # web app. In this repository it's beside the server's other web plugins; a checkout of the
 # app on its own names where a checkout of WittyVisualizer is.
-set(WITTYVISUALIZER_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../web/src/modules/wittyvisualizer" CACHE PATH "Folder with WittyVisualizer")
+# A clone of WittyVisualizer beside this one, or say where with -DWITTYVISUALIZER_DIR=<folder>.
+set(WITTYVISUALIZER_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../WittyVisualizer" CACHE PATH "Folder with WittyVisualizer")
 add_subdirectory("${WITTYVISUALIZER_DIR}/qt" wittyvisualizer)
 
 qt_add_library(wmpcore STATIC

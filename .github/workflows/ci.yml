@@ -1,0 +1,32 @@
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# Nothing here writes to the repository, and no secret is used.
+permissions:
+  contents: read
+
+jobs:
+  # The whole player needs Qt, built by scripts/setup-toolchain.sh; a release builds it.
+  engine:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: engine
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version: "1.27.x"
+          check-latest: true
+          cache: false
+      - name: Test
+        run: |
+          if grep -q '^replace' go.mod; then echo "go.mod has replace directives, which go install refuses"; exit 1; fi
+          go vet ./...
+          go test ./... -count=1

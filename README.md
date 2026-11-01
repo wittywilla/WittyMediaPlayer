@@ -18,7 +18,7 @@
 - **Plays and copies audio CDs,** from a drive or an image (`.cue`, `.toc`, `.ccd`, `.nrg`, `.chd`, `.bin`), on a CD screen
   with its own glossy look and a visualizer: tick the tracks and copy them to FLAC, ALAC, WAV, MP3, AAC, Opus or Ogg
   Vorbis, with careful reading, tags and cover art, or make a `.cue` and `.bin` image of the disc.
-- **Shows music as light:** [WittyVisualizer](../../web/src/modules/wittyvisualizer) brings seventeen effects to audio files, full
+- **Shows music as light:** [WittyVisualizer](https://github.com/wittywilla/WittyVisualizer) brings seventeen effects to audio files, full
   screen, with a flash limiter and a calm mode. It's off until you turn it on (V), and it costs nothing until then.
 - **Says no plainly:** a copy-protected disc gets a clear message. Nothing here unlocks copy protection.
 - **Runs well on small machines:** the picture is drawn by the graphics card, and hardware decoding is used where
@@ -155,23 +155,24 @@ This was built on a laptop with no disc drive, so a real disc is yours to try:
 
 ## Build it
 
-You need Git for Windows, Python 3 and Go. Everything else is fetched for your user only, with no
-administrator rights and no accounts. Run these in Git Bash from the repository's top folder:
+You need Git for Windows, Python 3 and Go, and a clone of
+[WittyVisualizer](https://github.com/wittywilla/WittyVisualizer) beside this one. Everything else is fetched for
+your user only, with no administrator rights and no accounts. Run these in Git Bash from the repository's top folder:
 
 ```bash
-bash apps/wittymediaplayer/scripts/setup-toolchain.sh
+bash scripts/setup-toolchain.sh
 ```
 
 ```bash
-bash apps/wittymediaplayer/scripts/build-windows.sh
+bash scripts/build-windows.sh
 ```
 
-The portable folder and zip land in `apps/wittymediaplayer/.build/`.
+The portable folder and zip land in `.build/`.
 
 To run the tests:
 
 ```bash
-bash apps/wittymediaplayer/scripts/test.sh
+bash scripts/test.sh
 ```
 
 They need no one at the screen and use Qt's offscreen platform. Set `WITTY_TEST_DVD` and `WITTY_TEST_BD` to

@@ -24,7 +24,7 @@ runtime inside the window's process. A helper keeps them apart, which brings thr
 - **Safety:** discs are untrusted. A damaged or hostile one can only take down the helper, and the
   window says so plainly.
 - **Portability:** the helper is pure Go. It cross-compiles for every platform with no C compiler.
-- **Simplicity:** the protocol already exists in `modules/wittymodule`. The helper has one job and
+- **Simplicity:** the protocol already exists in WittyModule. The helper has one job and
   needs nothing but its stdin and stdout. A test checks it contains no network code at all.
 
 ### Why this FFmpeg, and not a ready-made one
@@ -64,7 +64,7 @@ wittymediaplayer.exe                    wittymediaplayer-engine.exe
 ```
 
 `internal/disc` follows the server's `internal/dvdsession` and `internal/bdsession`, and
-`DiscController` follows `web/src/player/DvdPlayer.tsx`. The presentations have the same shape and
+`DiscController` follows `web/src/player/DvdPlayer.tsx` in the server's web app. The presentations have the same shape and
 the same rules, with one change: where the server starts an HLS stream, the helper hands over byte
 ranges and the player decodes them directly. That means no transcoding, no temporary files and no
 loopback server.
@@ -137,8 +137,8 @@ The disc modules follow the same rules as WittyMediaServer's modules. See `docs/
 
 | Module | What it is | Lives in |
 |---|---|---|
-| `wittydvdplayer` | WittyDVD and its session, as a helper program | `modules/wittydvd/wittydvdplayer` |
-| `wittyblurayplayer` | WittyBluray and its session, as a helper program | `modules/wittybluray/wittyblurayplayer` |
+| `wittydvdplayer` | WittyDVD and its session, as a helper program | WittyDVD, `wittydvdplayer/` |
+| `wittyblurayplayer` | WittyBluray and its session, as a helper program | WittyBluray, `wittyblurayplayer/` |
 | WittyDisc | The shared reader, and the `session` contract | A library: it arrives inside those two |
 
 - **A built-in copy always works.** The same packages are linked into `wittymediaplayer-engine`. With nothing downloaded, nothing
