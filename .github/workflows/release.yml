@@ -1,6 +1,7 @@
-# A version tag builds the Windows player and publishes it with a checksum list. The player
-# isn't installed through a server, so it holds no module key. Signing the program itself is
-# a step for when there is a code-signing certificate: docs in its README.
+# A version tag builds the Windows player and publishes its installer, its portable zip and the
+# libraries' source with a checksum list. The player isn't installed through a server, so it holds
+# no module key. Signing the program itself is a step for when there is a code-signing certificate:
+# docs in its README.
 name: release
 on:
   push:
@@ -45,14 +46,30 @@ jobs:
         run: |
           bash scripts/setup-toolchain.sh
           bash scripts/build-windows.sh
+      - name: Get the WiX Toolset
+        run: |
+          dotnet tool install --tool-path "$RUNNER_TEMP/wix" wix --version 6.0.2
+          "$RUNNER_TEMP/wix/wix" extension add -g WixToolset.UI.wixext/6.0.2 WixToolset.Util.wixext/6.0.2
+      - name: Build the installer
+        run: |
+          WIX_EXE="$RUNNER_TEMP/wix/wix.exe" powershell.exe -NoProfile -ExecutionPolicy Bypass -File packaging/windows/build-msi.ps1 \
+            -Version "${GITHUB_REF_NAME#v}" -PackageDir ".build/WittyMediaPlayer-${GITHUB_REF_NAME#v}-windows-amd64" -OutDir .build
+      - name: Check the installer, without installing it
+        run: |
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/test/check-msi.ps1 \
+            -Msi ".build/WittyMediaPlayer-${GITHUB_REF_NAME#v}-windows-amd64.msi" -Version "${GITHUB_REF_NAME#v}" \
+            -Scratch "$RUNNER_TEMP/msi-check" -PackageDir ".build/WittyMediaPlayer-${GITHUB_REF_NAME#v}-windows-amd64"
       - name: Write the checksum list
         run: |
           cd .build
-          sha256sum WittyMediaPlayer-*.zip > "WittyMediaPlayer-${GITHUB_REF_NAME#v}-SHA256SUMS.txt"
+          # What the licences of FFmpeg and LAME ask to go with the program (see licenses/THIRD-PARTY.txt).
+          powershell.exe -NoProfile -Command "Compress-Archive -Path source -DestinationPath WittyMediaPlayer-${GITHUB_REF_NAME#v}-third-party-source.zip"
+          sha256sum WittyMediaPlayer-*.zip WittyMediaPlayer-*.msi > "WittyMediaPlayer-${GITHUB_REF_NAME#v}-SHA256SUMS.txt"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: release-files
           path: |
+            WittyMediaPlayer/.build/WittyMediaPlayer-*.msi
             WittyMediaPlayer/.build/WittyMediaPlayer-*.zip
             WittyMediaPlayer/.build/*-SHA256SUMS.txt
           if-no-files-found: error

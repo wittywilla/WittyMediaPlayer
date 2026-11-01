@@ -34,24 +34,110 @@
   small updater program has any. (`Qt6Network.dll` is in the folder only because Qt's sound library won't load without it.
   Nothing calls it.)
 
+## Install it
+
+It needs Windows 10 version 1809 or newer, 64-bit. Download **`WittyMediaPlayer-<version>-windows-amd64.msi`** from
+[Releases](https://github.com/wittywilla/WittyMediaPlayer/releases) and open it. The installer asks three things:
+
+- **Who it's for.** Just you, which needs no administrator, or everyone on this computer, which goes in Program Files.
+- **A shortcut on the desktop,** if you want one. It's always in the Start menu.
+- **Which kinds of file to list it for,** under Open with: video, music and disc images. Nothing else changes: whatever
+  opens those files now still opens them, until you choose WittyMediaPlayer in Windows Settings, under Apps, Default apps.
+
+Windows may say it protected your PC from an unrecognised app, because the installer isn't signed yet. Choose **More
+info**, then **Run anyway**.
+
+A newer installer upgrades the one you have, keeping your settings and your answers.
+
+### Without installing
+
+**`WittyMediaPlayer-<version>-windows-amd64.zip`** is the same program as a folder: unzip it anywhere and run
+`WittyMediaPlayer.exe`. Its settings are in the same place as an installed copy's.
+
+### For administrators
+
+```bash
+msiexec /i WittyMediaPlayer-<version>-windows-amd64.msi /qn MSIINSTALLPERUSER=1
+```
+
+```bash
+msiexec /i WittyMediaPlayer-<version>-windows-amd64.msi /qn MSIINSTALLPERUSER="" DESKTOPSHORTCUT=1 ASSOCDISC=""
+```
+
+| Property | Means | If you don't say |
+|---|---|---|
+| `MSIINSTALLPERUSER` | `1` just for this account; `""` for everyone (run it as an administrator) | just for this account |
+| `DESKTOPSHORTCUT` | `1` puts a shortcut on the desktop | none |
+| `ASSOCVIDEO`, `ASSOCMUSIC`, `ASSOCDISC` | `""` leaves that kind of file off the Open with list | listed |
+
+An upgrade keeps the last answers to these, whatever a new command line says.
+
+## Remove it
+
+Use **Settings, Apps, Installed apps**, as for anything else, and choose WittyMediaPlayer. It tells you what it's about to
+do, closes the player if it's open, and asks one question: whether to also delete your settings and the disc modules it
+downloaded. Then it lists what it removed and anything it couldn't, and keeps that list in your temp folder.
+
+A portable copy has the same `Uninstall WittyMediaPlayer.exe` in its folder.
+
+| It removes | Where |
+|---|---|
+| The program | `%LOCALAPPDATA%\Programs\WittyMediaPlayer`, `C:\Program Files\WittyMediaPlayer` or the folder you unzipped: only the files in its `package-files.txt` |
+| Shortcuts | The Start menu and the desktop |
+| Its registry entries | Installed apps, Default apps, Open with, its file types, its own key, and what File Explorer noted about it (the place in Open with lists, a default you chose, its name) |
+| If you say yes: your settings | `%APPDATA%\WittyMediaPlayer` |
+| If you say yes: downloaded modules | `%LOCALAPPDATA%\WittyMediaPlayer\modules` |
+
+The player keeps no logs and no caches of its own. Your media is never touched, and neither are the CDs you copied, the disc
+images you made, or any file in those folders that the player didn't make: those are left and listed. As an administrator it
+also clears the settings and shortcuts of other accounts on the computer, but it can't reach what File Explorer noted in
+their registries. Windows' own history of what was opened, such as recent files, isn't touched.
+
+For scripts:
+
+```bash
+"Uninstall WittyMediaPlayer.exe" /S
+```
+
+```bash
+"Uninstall WittyMediaPlayer.exe" /S /RemoveData --report C:\Temp\removed.txt
+```
+
+```bash
+"Uninstall WittyMediaPlayer.exe" --dry-run
+```
+
+`/S` asks nothing and keeps your settings; `/RemoveData` is a full clean-up. It returns at once and works in the
+background, and the file named by `--report` appears when it has finished. `msiexec /x` also works, and keeps your settings.
+
 ## Use it
 
-Unzip the folder anywhere and run `wittymediaplayer.exe`. It needs Windows 10 version 1809 or newer, 64-bit.
-
-Open something with **File, Open**, by dropping it on the window, from the list of drives on the start page, or
-from a command line:
+Open something with **File, Open**, by dropping it on the window, from the list of drives on the start page, from a
+file's **Open with** menu, or from a command line:
 
 ```bash
-wittymediaplayer.exe "C:\Movies\film.mkv"
+WittyMediaPlayer.exe "C:\Movies\film.mkv"
 ```
 
 ```bash
-wittymediaplayer.exe "C:\Discs\film.iso"
+WittyMediaPlayer.exe "C:\Discs\film.iso"
 ```
 
 ```bash
-wittymediaplayer.exe D:
+WittyMediaPlayer.exe D:
 ```
+
+### What's in the folder
+
+| Program | What it's for |
+|---|---|
+| `WittyMediaPlayer.exe` | The player. This is the one you open |
+| `Uninstall WittyMediaPlayer.exe` | Removes it |
+| `bin\wittymediaplayer-engine.exe` | Reads discs for the player, and makes disc images from a command line. No network code |
+| `bin\wittymediaplayer-updater.exe` | Downloads updates to the disc modules and looks up CD names, only when you press a button that says so |
+
+The rest are the libraries the player is built on, which Windows needs beside it. `licenses\` says what they are and
+where their source is.
 
 ### Keyboard
 
@@ -87,7 +173,7 @@ To use the image in WittyMediaServer, save it in (or move it to) a folder one of
 scan the library. The same copy runs from a command line, and never overwrites anything:
 
 ```bash
-wittymediaplayer-engine.exe --image D: "C:\Discs\film.iso"
+bin\wittymediaplayer-engine.exe --image D: "C:\Discs\film.iso"
 ```
 
 Discs protected with CSS or AACS are refused before anything is written. Audio CDs are imaged from the CD screen.
@@ -151,7 +237,8 @@ This was built on a laptop with no disc drive, so a real disc is yours to try:
 
 - Blu-ray menus written in Java don't run. The disc plays its titles instead, and the window says so.
 - Sound is stereo with the built-in playback. Surround tracks are mixed down.
-- Windows only for now. Nothing in the design stops other systems: see [DESIGN.md](DESIGN.md).
+- Windows only for now, so there's no installer or uninstaller for macOS or Linux. Nothing in the design stops other
+  systems: see [DESIGN.md](DESIGN.md).
 
 ## Build it
 
@@ -167,7 +254,13 @@ bash scripts/setup-toolchain.sh
 bash scripts/build-windows.sh
 ```
 
-The portable folder and zip land in `.build/`.
+The portable folder and zip land in `.build/`. The installer is made from that folder, with the
+[WiX Toolset](https://wixtoolset.org) 6 on the PATH or at `WIX_EXE` (the top of the script says how to get it). Run this in
+PowerShell, with the version from `CMakeLists.txt`:
+
+```powershell
+packaging\windows\build-msi.ps1 -Version <version> -PackageDir .build\WittyMediaPlayer-<version>-windows-amd64 -OutDir .build
+```
 
 To run the tests:
 
@@ -177,6 +270,15 @@ bash scripts/test.sh
 
 They need no one at the screen and use Qt's offscreen platform. Set `WITTY_TEST_DVD` and `WITTY_TEST_BD` to
 disc images to include real discs; those are only ever read.
+
+To test the installer, neither of these installs anything on the computer you run it on:
+
+- `scripts\test\check-msi.ps1` reads the MSI's tables and unpacks it to a folder of your choosing, to check what's in it.
+- `scripts/test/installers-wine.sh` really installs, upgrades and removes it, for one person and for everyone, in a throwaway
+  Docker container with Wine, and compares every file and registry entry from before and after.
+
+`engine/internal/uninstall` has tests that read the player's source and the installer's: they fail if the player starts
+writing somewhere the uninstaller doesn't know, or the installer writes something it wouldn't remove.
 
 ## Licence
 
