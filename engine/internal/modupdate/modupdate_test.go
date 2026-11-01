@@ -78,7 +78,7 @@ func exeBytes(t *testing.T) []byte {
 // release publishes a signed release, the way the release tool lays one out.
 func (f *feed) release(srv *httptest.Server, version string, tweak func(man *wittymodule.Manifest, files map[string][]byte)) {
 	man := wittymodule.Manifest{ID: testID, Name: "WittyDVD for WittyMediaPlayer", Version: version, Repo: "wittywilla/WittyDVD", Delivery: wittymodule.DeliveryHelper,
-		Entry: "wittydvd-player", API: 1, MinServer: "0.1.0", MaxServer: "0.1.x"}
+		Entry: "wittydvd-player", API: wittymodule.API, MinServer: "0.1.0", MaxServer: "0.1.x"}
 	files := map[string][]byte{man.EntryFile(runtime.GOOS): exeBytes(f.t)}
 	if tweak != nil {
 		tweak(&man, files)
@@ -289,7 +289,7 @@ func TestBadArchivesAreRefused(t *testing.T) {
 	}
 	// A helper that says it's something else.
 	f.release(srv, "0.1.2", func(_ *wittymodule.Manifest, files map[string][]byte) {
-		other, _ := json.Marshal(wittymodule.Manifest{ID: testID, Name: "x", Version: "0.0.9", Repo: "wittywilla/WittyDVD", Delivery: wittymodule.DeliveryHelper, Entry: "wittydvd-player", API: 1, MinServer: "0.1.0", MaxServer: "0.1.x"})
+		other, _ := json.Marshal(wittymodule.Manifest{ID: testID, Name: "x", Version: "0.0.9", Repo: "wittywilla/WittyDVD", Delivery: wittymodule.DeliveryHelper, Entry: "wittydvd-player", API: wittymodule.API, MinServer: "0.1.0", MaxServer: "0.1.x"})
 		files[wittymodule.ManifestFile] = other
 	})
 	if err := c.Install(ctx, mod, "0.1.2"); err == nil {

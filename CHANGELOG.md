@@ -5,6 +5,7 @@ What changed in WittyMediaPlayer, newest first. What changed before it had a rep
 
 ## Unreleased
 
+- Built on the current disc modules: WittyDVD and WittyBluray 0.3.0, WittyCD and WittyDisc 0.2.0, and the module kit 0.3.0. A downloaded disc module now has to use module API 3, the oldest the kit takes.
 - WittyMediaPlayer is now a project of its own, developed and released from this repository.
 - **A real Windows installer.** An MSI with a Start menu entry, for just you or for everyone, with an optional desktop
   shortcut, and the file types it should be listed for asked in plain words. A newer one upgrades in place. It has silent
