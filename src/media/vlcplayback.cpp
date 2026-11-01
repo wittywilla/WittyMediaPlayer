@@ -6,11 +6,16 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
-#include <QSettings>
 #include <QThread>
 #include <chrono>
 #include <cstring>
 #include <thread>
+
+#ifdef Q_OS_WIN
+#define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
+#include <windows.h>
+#endif
 
 namespace wmp {
 
@@ -227,10 +232,13 @@ VlcPlayback::~VlcPlayback()
 QString VlcPlayback::detectFolder()
 {
 #ifdef Q_OS_WIN
-    const QString reg = QSettings(QStringLiteral("HKEY_LOCAL_MACHINE\\SOFTWARE\\VideoLAN\\VLC"), QSettings::NativeFormat).value(QStringLiteral("InstallDir")).toString();
+    // Only ever reads. QSettings would make the key, on a computer with no VLC, if it ran as an
+    // administrator, and leave that behind.
+    wchar_t installDir[1024];
+    DWORD size = sizeof(installDir);
     QStringList places;
-    if (!reg.isEmpty())
-        places << reg;
+    if (RegGetValueW(HKEY_LOCAL_MACHINE, L"SOFTWARE\\VideoLAN\\VLC", L"InstallDir", RRF_RT_REG_SZ, nullptr, installDir, &size) == ERROR_SUCCESS)
+        places << QString::fromWCharArray(installDir);
     places << qEnvironmentVariable("ProgramFiles") + QStringLiteral("\\VideoLAN\\VLC");
     for (const QString &p : places)
         if (QFile::exists(QDir(p).filePath(QStringLiteral("libvlc.dll"))))

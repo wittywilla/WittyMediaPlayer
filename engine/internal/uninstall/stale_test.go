@@ -97,8 +97,6 @@ func TestThePlayerWritesOnlyWhereTheUninstallerLooks(t *testing.T) {
 					switch {
 					case strings.Contains(line, "IniFormat, QSettings::UserScope") && strings.Contains(line, `"WittyMediaPlayer"), QStringLiteral("WittyMediaPlayer")`):
 						// %APPDATA%\WittyMediaPlayer\WittyMediaPlayer.ini: SettingsEntries.
-					case strings.Contains(line, `HKEY_LOCAL_MACHINE\\SOFTWARE\\VideoLAN\\VLC`):
-						// Only reads where a person's own VLC is.
 					case strings.Contains(line, "QSettings *"):
 						// Given one, by what's above.
 					default:
