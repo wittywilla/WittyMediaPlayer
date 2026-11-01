@@ -114,12 +114,12 @@ func there(t *testing.T, p string) {
 }
 
 type machine struct {
-	root                                 string
+	root                                  string
 	programFiles, perUser, local, roaming string
-	home                                 string
-	vars                                 map[string]string
-	sys                                  *fakeSys
-	env                                  *Env
+	home                                  string
+	vars                                  map[string]string
+	sys                                   *fakeSys
+	env                                   *Env
 }
 
 func newMachine(t *testing.T) *machine {
@@ -286,6 +286,26 @@ func TestEveryoneNeedsAnAdministrator(t *testing.T) {
 	gone(t, m.programFiles)
 	if m.sys.RegKeyExists("HKLM", UninstallKey) || m.sys.RegKeyExists("HKLM", productKey) {
 		t.Error("registry keys stayed")
+	}
+}
+
+func TestWhereTheInstallerSaidItPutIt(t *testing.T) {
+	m := newMachine(t)
+	dir := filepath.Join(m.root, "Apps", appName)
+	fillPackage(t, dir)
+	m.fillRegistry("HKLM")
+	m.sys.set("HKLM", UninstallKey, "InstallLocation", dir+string(filepath.Separator))
+	m.sys.answers["msiexec.exe /x"] = func() error { return errors.New("exit status 1603") }
+	pl := MakePlan(m.env)
+	if !pl.NeedsAdmin(Options{}) {
+		t.Error("it's for everyone, so it needs an administrator")
+	}
+	r := Execute(pl, Options{})
+	if !strings.Contains(strings.Join(m.sys.stopped, "\n"), dir) {
+		t.Error("it didn't close what was running there")
+	}
+	if _, err := os.Lstat(filepath.Join(dir, "WittyMediaPlayer.exe")); !os.IsNotExist(err) {
+		t.Errorf("it stayed, after Windows Installer failed:\n%s", r.Report())
 	}
 }
 

@@ -131,7 +131,7 @@ func planWindows(e *Env, pl *Plan) {
 	// What runs. Downloaded modules run from the data folder, and a file in use can't be removed.
 	modules := filepath.Join(localApp, appName, "modules")
 	seenRun := map[string]bool{}
-	for _, dir := range []string{programFiles, perUser, e.SelfRoot, modules} {
+	for _, dir := range append(programFolders(e), modules) {
 		key := strings.ToLower(dir)
 		if dir == "" || seenRun[key] || !isDir(dir) {
 			continue
@@ -175,7 +175,15 @@ func planWindows(e *Env, pl *Plan) {
 		}
 	}
 
-	// The program, wherever it is.
+	// The program, wherever it is. Where the installer says it put it goes first, as that's right
+	// about who can remove it.
+	if d, ok := e.Sys.RegValue("HKCU", UninstallKey, "InstallLocation"); ok && d != "" {
+		d = filepath.Clean(d)
+		planProgramFolder(pl, d, samePath(d, programFiles))
+	}
+	if d, ok := e.Sys.RegValue("HKLM", UninstallKey, "InstallLocation"); ok && d != "" {
+		planProgramFolder(pl, filepath.Clean(d), true)
+	}
 	planProgramFolder(pl, programFiles, true)
 	planProgramFolder(pl, perUser, false)
 	planProgramFolder(pl, e.SelfRoot, false)

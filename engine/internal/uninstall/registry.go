@@ -145,11 +145,18 @@ func pruneKey(e *Env, hive, key string) error {
 	return e.Sys.RegDeleteTree(hive, key)
 }
 
+// programFolders is everywhere the program may be: the usual two, this copy, and where the
+// installer says it put it.
 func programFolders(e *Env) []string {
 	var out []string
 	for _, d := range []string{filepath.Join(e.Getenv("ProgramFiles"), appName), filepath.Join(e.Getenv("LOCALAPPDATA"), "Programs", appName), e.SelfRoot} {
 		if d != "" {
 			out = append(out, d)
+		}
+	}
+	for _, hive := range []string{"HKCU", "HKLM"} {
+		if d, ok := e.Sys.RegValue(hive, UninstallKey, "InstallLocation"); ok && d != "" {
+			out = append(out, filepath.Clean(d))
 		}
 	}
 	return out

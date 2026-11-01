@@ -110,6 +110,7 @@ func RemoveSelfLater() {
 	cmd := exec.Command(filepath.Join(sys, "cmd.exe"))
 	cmd.Dir = os.TempDir()
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true, CreationFlags: createNoWindow,
-		CmdLine: `cmd.exe /d /c "` + filepath.Join(sys, "PING.EXE") + `" -n 3 127.0.0.1 >nul & rmdir /s /q "` + dir + `"`}
+		// cmd.exe takes off the first and last quote of what follows /c, so the whole of it is in quotes.
+		CmdLine: `cmd.exe /d /c ""` + filepath.Join(sys, "PING.EXE") + `" -n 3 127.0.0.1 >nul & rmdir /s /q "` + dir + `""`}
 	_ = cmd.Start()
 }
