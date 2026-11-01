@@ -63,7 +63,7 @@
           </RadioButtonGroup>
         </Control>
         <Control Id="MeText" Type="Text" X="40" Y="76" Width="300" Height="40" NoPrefix="yes"
-                 Text="Needs no administrator. It goes in your own account's folders, where other people on this computer don't see it. Recommended for most people." />
+                 Text="Needs no administrator, and other people on this computer won't see it. Recommended for most people." />
         <Control Id="EveryoneText" Type="Text" X="40" Y="138" Width="300" Height="40" NoPrefix="yes"
                  Text="Asks for an administrator, and installs to Program Files. Each person on this computer still has their own settings." />
         <Control Id="Back" Type="PushButton" X="180" Y="243" Width="56" Height="17" Text="!(loc.WixUIBack)">
