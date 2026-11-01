@@ -32,6 +32,9 @@ func TestNoNetworkCode(t *testing.T) {
 	}
 	for _, pkg := range strings.Fields(string(out)) {
 		switch {
+		// WittyModule reads web addresses in a module's manifest: net/url only parses text, and net/netip
+		// comes with it. Neither can open a connection.
+		case pkg == "net/url" || pkg == "net/netip":
 		case pkg == "net" || strings.HasPrefix(pkg, "net/"), pkg == "crypto/tls", pkg == "plugin":
 			t.Errorf("the helper imports %s", pkg)
 		case strings.Contains(pkg, "wittybluray/bdj"):
