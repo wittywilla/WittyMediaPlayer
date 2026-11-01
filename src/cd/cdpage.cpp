@@ -1464,15 +1464,6 @@ void CdPage::makeImage(const QString &cuePath)
     setBusyControls();
 }
 
-QString CdPage::updaterPath() const
-{
-    QString name = QStringLiteral("wittymediaplayer-updater");
-#ifdef Q_OS_WIN
-    name += QStringLiteral(".exe");
-#endif
-    return QDir(QCoreApplication::applicationDirPath()).filePath(name);
-}
-
 void CdPage::lookUp()
 {
     if (lookup_ || info_.discId.isEmpty())
@@ -1512,7 +1503,7 @@ void CdPage::lookUp()
         }
         applyMatch(matches.at(pick).toObject());
     });
-    lookup_->start(updaterPath(), {QStringLiteral("--cd-lookup"), info_.discId, info_.toc, QString::number(info_.tracks.size())}, QIODevice::ReadOnly);
+    lookup_->start(EngineClient::updaterPath(), {QStringLiteral("--cd-lookup"), info_.discId, info_.toc, QString::number(info_.tracks.size())}, QIODevice::ReadOnly);
     setBusyControls();
 }
 
@@ -1545,7 +1536,7 @@ void CdPage::fetchCover(const QString &releaseId)
         p->deleteLater();
         setCover(QByteArray::fromBase64(o.value(QStringLiteral("cover")).toString().toLatin1()));
     });
-    p->start(updaterPath(), {QStringLiteral("--cd-cover"), releaseId}, QIODevice::ReadOnly);
+    p->start(EngineClient::updaterPath(), {QStringLiteral("--cd-cover"), releaseId}, QIODevice::ReadOnly);
 }
 
 void CdPage::setCover(const QByteArray &bytes)

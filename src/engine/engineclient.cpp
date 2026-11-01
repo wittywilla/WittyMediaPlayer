@@ -13,13 +13,23 @@ EngineClient::~EngineClient()
     stop();
 }
 
+QString EngineClient::helperPath(const QString &name)
+{
+#ifdef Q_OS_WIN
+    return QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("bin/") + name + QStringLiteral(".exe"));
+#else
+    return QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("bin/") + name);
+#endif
+}
+
 QString EngineClient::enginePath()
 {
-    QString name = QStringLiteral("wittymediaplayer-engine");
-#ifdef Q_OS_WIN
-    name += QStringLiteral(".exe");
-#endif
-    return QDir(QCoreApplication::applicationDirPath()).filePath(name);
+    return helperPath(QStringLiteral("wittymediaplayer-engine"));
+}
+
+QString EngineClient::updaterPath()
+{
+    return helperPath(QStringLiteral("wittymediaplayer-updater"));
 }
 
 bool EngineClient::start()

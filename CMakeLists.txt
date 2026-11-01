@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.21)
-project(WittyMediaPlayer VERSION 0.1.0 LANGUAGES CXX)
+project(WittyMediaPlayer VERSION 0.1.1 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -79,8 +79,15 @@ qt_add_resources(wmpcore "wmp_themes"
         resources/themes/oled.json
 )
 
-qt_add_executable(wittymediaplayer WIN32 src/main.cpp)
-target_link_libraries(wittymediaplayer PRIVATE wmpcore)
+qt_add_executable(WittyMediaPlayer WIN32 src/main.cpp)
+target_link_libraries(WittyMediaPlayer PRIVATE wmpcore)
+# Its icon, and what a file's Properties and Task Manager say about it.
+if(WIN32)
+    enable_language(RC)
+    set(WMP_ICON "${CMAKE_CURRENT_SOURCE_DIR}/resources/WittyMediaPlayer.ico")
+    configure_file(resources/windows/WittyMediaPlayer.rc.in WittyMediaPlayer.rc @ONLY)
+    target_sources(WittyMediaPlayer PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/WittyMediaPlayer.rc")
+endif()
 
 enable_testing()
 qt_add_executable(wmptests tests/tst_core.cpp)

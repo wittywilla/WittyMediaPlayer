@@ -52,7 +52,7 @@ are read by the `file` protocol and nothing else.
 ## How a disc plays
 
 ```
-wittymediaplayer.exe                    wittymediaplayer-engine.exe
+WittyMediaPlayer.exe                    bin\wittymediaplayer-engine.exe
 ┌──────────────────────────────┐        ┌────────────────────────────┐
 │ DiscController               │  JSON  │ WittyDVD / WittyBluray     │
 │  presents, holds, loops  ◄───┼────────┼─►  navigator, VM, menus    │

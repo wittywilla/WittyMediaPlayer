@@ -40,8 +40,10 @@ public:
 
     void call(const QString &method, const QJsonObject &params, Callback cb = {});
 
-    // The engine program, next to this one.
+    // The programs that help this one, in bin/ beside it. A helper's name says its job.
+    static QString helperPath(const QString &name);
     static QString enginePath();
+    static QString updaterPath();
 
 signals:
     void helperLost();

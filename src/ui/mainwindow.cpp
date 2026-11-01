@@ -876,11 +876,7 @@ void MainWindow::lookForModuleUpdates()
         if (!found.isEmpty() && !player_->hasMedia())
             engineCredit_->setText(QStringLiteral("There are updates for this player's disc modules. See File, Settings.")), engineCredit_->show();
     });
-    QString updater = QStringLiteral("wittymediaplayer-updater");
-#ifdef Q_OS_WIN
-    updater += QStringLiteral(".exe");
-#endif
-    proc->start(QDir(QCoreApplication::applicationDirPath()).filePath(updater), {QStringLiteral("--check")}, QIODevice::ReadOnly);
+    proc->start(EngineClient::updaterPath(), {QStringLiteral("--check")}, QIODevice::ReadOnly);
 }
 
 void MainWindow::applyEngine()

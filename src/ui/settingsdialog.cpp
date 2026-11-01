@@ -214,11 +214,7 @@ void SettingsDialog::runUpdater(const QStringList &args, const std::function<voi
         proc->deleteLater();
         done(o.isEmpty() ? QJsonObject{{"error", QStringLiteral("the updater stopped unexpectedly")}} : o);
     });
-    QString updater = QStringLiteral("wittymediaplayer-updater");
-#ifdef Q_OS_WIN
-    updater += QStringLiteral(".exe");
-#endif
-    proc->start(QDir(QCoreApplication::applicationDirPath()).filePath(updater), args, QIODevice::ReadOnly);
+    proc->start(EngineClient::updaterPath(), args, QIODevice::ReadOnly);
 }
 
 void SettingsDialog::checkForUpdates()

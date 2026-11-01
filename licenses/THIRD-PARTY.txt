@@ -210,7 +210,8 @@ https://github.com/wittywilla
 
 
 THE GO STANDARD LIBRARY
-Built into wittymediaplayer-engine.exe and wittymediaplayer-updater.exe.
+Built into wittymediaplayer-engine.exe, wittymediaplayer-updater.exe and Uninstall
+WittyMediaPlayer.exe.
 Copyright (c) 2009 The Go Authors. Licensed under a BSD-style licence:
 https://go.dev/LICENSE
 

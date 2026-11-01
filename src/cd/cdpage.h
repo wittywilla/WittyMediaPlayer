@@ -127,7 +127,6 @@ private:
     void fetchCover(const QString &releaseId);
     bool askAboutFlashing();
     void showVisualButtons();
-    QString updaterPath() const;
 
     Player *player_;
     QSettings *settings_;

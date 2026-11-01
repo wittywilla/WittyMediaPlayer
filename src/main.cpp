@@ -1,6 +1,6 @@
 // WittyMediaPlayer: a desktop media player for video, audio, DVDs and Blu-rays.
 //
-//   wittymediaplayer [file, disc image, disc folder or drive]
+//   WittyMediaPlayer [file, disc image, disc folder or drive]
 //
 // --script runs a list of steps with no one at the keyboard, for automated checks
 // (see testscript.cpp). It only reads from what it is told to play and writes only the
