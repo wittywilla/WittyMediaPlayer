@@ -1,0 +1,225 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  The Windows installer of WittyMediaPlayer, built with the WiX Toolset by build-msi.ps1 from the
+  folder scripts/build-windows.sh built. The wizard is in WittyUI.wxs.
+
+  One MSI for both ways of installing: just for this account, needing no administrator, in
+  %LOCALAPPDATA%\Programs; or for everyone, in Program Files. Every choice is a property, so an
+  admin can skip the questions:
+
+    msiexec /i x.msi /qn MSIINSTALLPERUSER=1 DESKTOPSHORTCUT=1
+    msiexec /i x.msi /qn MSIINSTALLPERUSER="" ASSOCDISC=""
+
+  Installed apps shows our own entry in place of the MSI's, because only that can ask whether to
+  keep your settings: Uninstall WittyMediaPlayer.exe asks, and then removes the MSI as well.
+  `msiexec /x` works too, and keeps your settings.
+
+  File types: Windows doesn't let an installer take over what opens a file, and this one doesn't
+  try. It puts the player in the Open with list and in Default apps, and a person chooses.
+
+  Anything added to the registry here must be something Uninstall WittyMediaPlayer.exe can remove:
+  a test in engine/internal/uninstall reads this file and fails otherwise.
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
+
+  <!-- What File, Open takes, but for .bin, which is a CD image only sometimes. -->
+  <?define VideoTypes = .mkv;.mp4;.m4v;.mov;.avi;.webm;.ts;.m2ts;.mts;.mpg;.mpeg;.vob;.wmv;.flv;.ogv;.3gp ?>
+  <?define MusicTypes = .mp3;.m4a;.aac;.flac;.wav;.ogg;.oga;.opus;.wma;.ac3;.dts ?>
+  <?define DiscTypes = .iso;.img;.cue;.toc;.ccd;.nrg;.chd ?>
+
+  <Package Name="WittyMediaPlayer"
+           Manufacturer="WittyWilla"
+           Version="$(var.Version)"
+           UpgradeCode="ff1c58fa-da0c-4e9c-9d4d-b0a7619d33b1"
+           Scope="perUserOrMachine"
+           Language="1033"
+           InstallerVersion="500">
+
+    <SummaryInformation Description="WittyMediaPlayer: video, audio, DVDs and Blu-rays" Manufacturer="WittyWilla" />
+
+    <!-- Reinstalling the same version works too, and a newer one replaces this in place. -->
+    <MajorUpgrade Schedule="afterInstallInitialize"
+                  AllowSameVersionUpgrades="yes"
+                  DowngradeErrorMessage="A newer version of WittyMediaPlayer is already installed." />
+    <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
+
+    <Icon Id="app.ico" SourceFile="!(bindpath.res)\WittyMediaPlayer.ico" />
+
+    <!-- Hides the MSI's own line in Installed apps: see the note at the top. -->
+    <Property Id="ARPSYSTEMCOMPONENT" Value="1" />
+    <Property Id="ARPPRODUCTICON" Value="app.ico" />
+
+    <!-- The choices, with what someone gets by clicking Next. Opening a type of file with this
+         player changes nothing until they choose it, so those are on. -->
+    <Property Id="DESKTOPSHORTCUT" Secure="yes" />
+    <Property Id="ASSOCVIDEO" Value="1" Secure="yes" />
+    <Property Id="ASSOCMUSIC" Value="1" Secure="yes" />
+    <Property Id="ASSOCDISC" Value="1" Secure="yes" />
+
+    <!-- An upgrade keeps the last answers. Each is written with a dash after it, so "no" is there
+         to be read: an empty value isn't. -->
+    <Property Id="WAS_DESKTOP"><RegistrySearch Id="WasDesktopUser" Root="HKCU" Key="Software\WittyWilla\WittyMediaPlayer" Name="ChoseDesktop" Type="raw" /><RegistrySearch Id="WasDesktopMachine" Root="HKLM" Key="Software\WittyWilla\WittyMediaPlayer" Name="ChoseDesktop" Type="raw" /></Property>
+    <Property Id="WAS_VIDEO"><RegistrySearch Id="WasVideoUser" Root="HKCU" Key="Software\WittyWilla\WittyMediaPlayer" Name="ChoseVideo" Type="raw" /><RegistrySearch Id="WasVideoMachine" Root="HKLM" Key="Software\WittyWilla\WittyMediaPlayer" Name="ChoseVideo" Type="raw" /></Property>
+    <Property Id="WAS_MUSIC"><RegistrySearch Id="WasMusicUser" Root="HKCU" Key="Software\WittyWilla\WittyMediaPlayer" Name="ChoseMusic" Type="raw" /><RegistrySearch Id="WasMusicMachine" Root="HKLM" Key="Software\WittyWilla\WittyMediaPlayer" Name="ChoseMusic" Type="raw" /></Property>
+    <Property Id="WAS_DISC"><RegistrySearch Id="WasDiscUser" Root="HKCU" Key="Software\WittyWilla\WittyMediaPlayer" Name="ChoseDisc" Type="raw" /><RegistrySearch Id="WasDiscMachine" Root="HKLM" Key="Software\WittyWilla\WittyMediaPlayer" Name="ChoseDisc" Type="raw" /></Property>
+    <!-- These run once, wizard or not, so a change made in the wizard isn't then undone. -->
+    <CustomAction Id="RestoreDesktop" Property="DESKTOPSHORTCUT" Value="1" Execute="firstSequence" />
+    <CustomAction Id="RestoreVideo" Property="ASSOCVIDEO" Value="{}" Execute="firstSequence" />
+    <CustomAction Id="RestoreMusic" Property="ASSOCMUSIC" Value="{}" Execute="firstSequence" />
+    <CustomAction Id="RestoreDisc" Property="ASSOCDISC" Value="{}" Execute="firstSequence" />
+
+    <!-- Scope above starts this as just for this account, and Windows Installer then points
+         Program Files at %LOCALAPPDATA%\Programs itself. MSIINSTALLPERUSER="" means everyone.
+         For everyone last time, so for everyone again: a per-user install can't replace it. -->
+    <Property Id="INSTALLED_FOR_EVERYONE">
+      <RegistrySearch Id="FindMachineInstall" Root="HKLM" Key="Software\Microsoft\Windows\CurrentVersion\Uninstall\WittyMediaPlayer" Name="ProductCode" Type="raw" />
+    </Property>
+    <CustomAction Id="SetScope" Property="MSIINSTALLPERUSER" Value="{}" />
+
+    <InstallUISequence>
+      <AppSearch Sequence="10" />
+      <Custom Action="SetScope" Sequence="11" Condition="INSTALLED_FOR_EVERYONE AND NOT Installed" />
+      <Custom Action="RestoreDesktop" After="FindRelatedProducts" Condition="WIX_UPGRADE_DETECTED AND WAS_DESKTOP=&quot;1-&quot; AND NOT Installed" />
+      <Custom Action="RestoreVideo" After="RestoreDesktop" Condition="WIX_UPGRADE_DETECTED AND WAS_VIDEO=&quot;-&quot; AND NOT Installed" />
+      <Custom Action="RestoreMusic" After="RestoreVideo" Condition="WIX_UPGRADE_DETECTED AND WAS_MUSIC=&quot;-&quot; AND NOT Installed" />
+      <Custom Action="RestoreDisc" After="RestoreMusic" Condition="WIX_UPGRADE_DETECTED AND WAS_DISC=&quot;-&quot; AND NOT Installed" />
+    </InstallUISequence>
+    <InstallExecuteSequence>
+      <AppSearch Sequence="10" />
+      <Custom Action="SetScope" Sequence="11" Condition="INSTALLED_FOR_EVERYONE AND NOT Installed" />
+      <Custom Action="RestoreDesktop" After="FindRelatedProducts" Condition="WIX_UPGRADE_DETECTED AND WAS_DESKTOP=&quot;1-&quot; AND NOT Installed" />
+      <Custom Action="RestoreVideo" After="RestoreDesktop" Condition="WIX_UPGRADE_DETECTED AND WAS_VIDEO=&quot;-&quot; AND NOT Installed" />
+      <Custom Action="RestoreMusic" After="RestoreVideo" Condition="WIX_UPGRADE_DETECTED AND WAS_MUSIC=&quot;-&quot; AND NOT Installed" />
+      <Custom Action="RestoreDisc" After="RestoreMusic" Condition="WIX_UPGRADE_DETECTED AND WAS_DISC=&quot;-&quot; AND NOT Installed" />
+      <!-- Close what's running first, or the old copy keeps its files and an upgrade fails. -->
+      <Custom Action="StopRunningApp" Before="RemoveExistingProducts" Condition="(WIX_UPGRADE_DETECTED OR REMOVE) AND NOT UPGRADINGPRODUCTCODE" />
+    </InstallExecuteSequence>
+
+    <!-- Failing here never stops an install: Windows Installer then asks, or a restart finishes it. -->
+    <SetProperty Action="SetStopRunningApp" Id="StopRunningApp" Before="StopRunningApp" Sequence="execute"
+                 Value="&quot;[INSTALLFOLDER]Uninstall WittyMediaPlayer.exe&quot; --stop-programs" />
+    <CustomAction Id="StopRunningApp" DllEntry="WixQuietExec" BinaryRef="Wix4UtilCA_$(sys.BUILDARCHSHORT)" Execute="deferred" Return="ignore" Impersonate="yes" />
+
+    <!-- Open the app at the end, if the box stays ticked. -->
+    <CustomAction Id="OpenApp" Directory="INSTALLFOLDER" ExeCommand="&quot;[INSTALLFOLDER]WittyMediaPlayer.exe&quot;" Return="asyncNoWait" Impersonate="yes" />
+
+    <StandardDirectory Id="ProgramFiles6432Folder">
+      <Directory Id="INSTALLFOLDER" Name="WittyMediaPlayer" />
+    </StandardDirectory>
+    <StandardDirectory Id="ProgramMenuFolder" />
+    <StandardDirectory Id="DesktopFolder" />
+
+    <ComponentGroup Id="Program" Directory="INSTALLFOLDER">
+      <Component Id="AppExe">
+        <File Id="AppExe" Source="!(bindpath.pkg)\WittyMediaPlayer.exe" KeyPath="yes" />
+      </Component>
+      <Component Id="UninstallExe">
+        <File Id="UninstallExe" Source="!(bindpath.pkg)\Uninstall WittyMediaPlayer.exe" KeyPath="yes" />
+      </Component>
+
+      <!-- Everything else: Qt, FFmpeg, the helpers in bin, the licences. -->
+      <Files Include="!(bindpath.pkg)\**">
+        <Exclude Files="!(bindpath.pkg)\WittyMediaPlayer.exe" />
+        <Exclude Files="!(bindpath.pkg)\Uninstall WittyMediaPlayer.exe" />
+      </Files>
+
+      <!-- Installed apps. Written here so it goes with the install, for this user or machine. -->
+      <Component Id="InstalledAppsEntry" Guid="793f529e-0d24-4875-983a-7dc35cf37a42">
+        <RegistryKey Root="HKMU" Key="Software\Microsoft\Windows\CurrentVersion\Uninstall\WittyMediaPlayer">
+          <RegistryValue Name="DisplayName" Type="string" Value="WittyMediaPlayer" KeyPath="yes" />
+          <RegistryValue Name="DisplayVersion" Type="string" Value="$(var.DisplayVersion)" />
+          <RegistryValue Name="Publisher" Type="string" Value="WittyWilla" />
+          <RegistryValue Name="DisplayIcon" Type="string" Value="[INSTALLFOLDER]WittyMediaPlayer.exe" />
+          <RegistryValue Name="InstallLocation" Type="string" Value="[INSTALLFOLDER]" />
+          <RegistryValue Name="ProductCode" Type="string" Value="[ProductCode]" />
+          <RegistryValue Name="UninstallString" Type="string" Value="&quot;[INSTALLFOLDER]Uninstall WittyMediaPlayer.exe&quot;" />
+          <RegistryValue Name="QuietUninstallString" Type="string" Value="&quot;[INSTALLFOLDER]Uninstall WittyMediaPlayer.exe&quot; /S" />
+          <RegistryValue Name="URLInfoAbout" Type="string" Value="https://github.com/wittywilla/WittyMediaPlayer" />
+          <RegistryValue Name="HelpLink" Type="string" Value="https://github.com/wittywilla/WittyMediaPlayer#readme" />
+          <RegistryValue Name="EstimatedSize" Type="integer" Value="$(var.SizeKB)" />
+          <RegistryValue Name="NoModify" Type="integer" Value="1" />
+          <RegistryValue Name="NoRepair" Type="integer" Value="1" />
+        </RegistryKey>
+      </Component>
+
+      <!-- The Start menu. Not advertised: nothing repairs itself and undoes an update. -->
+      <Component Id="StartMenuEntry" Guid="be0e97a3-a140-4ad3-b5ae-b999741fec7e" Directory="ProgramMenuFolder">
+        <Shortcut Id="StartMenuShortcut" Name="WittyMediaPlayer" Description="Video, audio, DVDs and Blu-rays" Target="[#AppExe]" WorkingDirectory="INSTALLFOLDER" Icon="app.ico" />
+        <RegistryValue Root="HKMU" Key="Software\WittyWilla\WittyMediaPlayer" Name="StartMenu" Type="string" Value="1" KeyPath="yes" />
+      </Component>
+      <Component Id="DesktopEntry" Guid="4bd76386-a80d-4dd6-b1d8-be89f31f3bd8" Directory="DesktopFolder" Condition="DESKTOPSHORTCUT=&quot;1&quot;">
+        <Shortcut Id="DesktopShortcut" Name="WittyMediaPlayer" Description="Video, audio, DVDs and Blu-rays" Target="[#AppExe]" WorkingDirectory="INSTALLFOLDER" Icon="app.ico" />
+        <RegistryValue Root="HKMU" Key="Software\WittyWilla\WittyMediaPlayer" Name="Desktop" Type="string" Value="1" KeyPath="yes" />
+      </Component>
+
+      <!-- What this install chose, for the next one. See above. -->
+      <Component Id="Choices" Guid="b7115c9a-e8a5-41dd-9bc8-76871913b2c5">
+        <RegistryKey Root="HKMU" Key="Software\WittyWilla\WittyMediaPlayer">
+          <RegistryValue Name="ChoseDesktop" Type="string" Value="[DESKTOPSHORTCUT]-" KeyPath="yes" />
+          <RegistryValue Name="ChoseVideo" Type="string" Value="[ASSOCVIDEO]-" />
+          <RegistryValue Name="ChoseMusic" Type="string" Value="[ASSOCMUSIC]-" />
+          <RegistryValue Name="ChoseDisc" Type="string" Value="[ASSOCDISC]-" />
+        </RegistryKey>
+      </Component>
+
+      <!-- How Windows knows the program: its name for the Run box, Open with and Default apps. -->
+      <Component Id="AppRegistration" Guid="712c84fc-f4aa-4df6-8972-f45467112625">
+        <RegistryValue Root="HKMU" Key="Software\WittyWilla\WittyMediaPlayer\Capabilities" Name="ApplicationName" Type="string" Value="WittyMediaPlayer" KeyPath="yes" />
+        <RegistryValue Root="HKMU" Key="Software\WittyWilla\WittyMediaPlayer\Capabilities" Name="ApplicationDescription" Type="string" Value="Plays video, audio, DVDs and Blu-rays." />
+        <RegistryValue Root="HKMU" Key="Software\WittyWilla\WittyMediaPlayer\Capabilities" Name="ApplicationIcon" Type="string" Value="[INSTALLFOLDER]WittyMediaPlayer.exe,0" />
+        <RegistryValue Root="HKMU" Key="Software\RegisteredApplications" Name="WittyMediaPlayer" Type="string" Value="Software\WittyWilla\WittyMediaPlayer\Capabilities" />
+        <RegistryValue Root="HKMU" Key="Software\Microsoft\Windows\CurrentVersion\App Paths\WittyMediaPlayer.exe" Type="string" Value="[INSTALLFOLDER]WittyMediaPlayer.exe" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\Applications\WittyMediaPlayer.exe" Name="FriendlyAppName" Type="string" Value="WittyMediaPlayer" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\Applications\WittyMediaPlayer.exe\shell\open\command" Type="string" Value="&quot;[INSTALLFOLDER]WittyMediaPlayer.exe&quot; &quot;%1&quot;" />
+      </Component>
+
+      <!-- Video files. -->
+      <Component Id="OpenVideo" Guid="7dc6dcf1-6cba-4e77-84e3-67ba2963e095" Condition="ASSOCVIDEO=&quot;1&quot;">
+        <RegistryValue Root="HKMU" Key="Software\Classes\WittyMediaPlayer.Video" Type="string" Value="Video file" KeyPath="yes" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\WittyMediaPlayer.Video" Name="FriendlyTypeName" Type="string" Value="Video file" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\WittyMediaPlayer.Video\DefaultIcon" Type="string" Value="[INSTALLFOLDER]WittyMediaPlayer.exe,0" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\WittyMediaPlayer.Video\shell\open\command" Type="string" Value="&quot;[INSTALLFOLDER]WittyMediaPlayer.exe&quot; &quot;%1&quot;" />
+        <?foreach T in $(var.VideoTypes)?>
+        <RegistryValue Root="HKMU" Key="Software\Classes\$(var.T)\OpenWithProgids" Name="WittyMediaPlayer.Video" Type="string" Value="[NOTHING]" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\Applications\WittyMediaPlayer.exe\SupportedTypes" Name="$(var.T)" Type="string" Value="[NOTHING]" />
+        <RegistryValue Root="HKMU" Key="Software\WittyWilla\WittyMediaPlayer\Capabilities\FileAssociations" Name="$(var.T)" Type="string" Value="WittyMediaPlayer.Video" />
+        <?endforeach?>
+      </Component>
+
+      <!-- Music files. -->
+      <Component Id="OpenMusic" Guid="02e47bb2-4e1f-4ee0-9b2e-6d679174c05e" Condition="ASSOCMUSIC=&quot;1&quot;">
+        <RegistryValue Root="HKMU" Key="Software\Classes\WittyMediaPlayer.Music" Type="string" Value="Music file" KeyPath="yes" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\WittyMediaPlayer.Music" Name="FriendlyTypeName" Type="string" Value="Music file" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\WittyMediaPlayer.Music\DefaultIcon" Type="string" Value="[INSTALLFOLDER]WittyMediaPlayer.exe,0" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\WittyMediaPlayer.Music\shell\open\command" Type="string" Value="&quot;[INSTALLFOLDER]WittyMediaPlayer.exe&quot; &quot;%1&quot;" />
+        <?foreach T in $(var.MusicTypes)?>
+        <RegistryValue Root="HKMU" Key="Software\Classes\$(var.T)\OpenWithProgids" Name="WittyMediaPlayer.Music" Type="string" Value="[NOTHING]" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\Applications\WittyMediaPlayer.exe\SupportedTypes" Name="$(var.T)" Type="string" Value="[NOTHING]" />
+        <RegistryValue Root="HKMU" Key="Software\WittyWilla\WittyMediaPlayer\Capabilities\FileAssociations" Name="$(var.T)" Type="string" Value="WittyMediaPlayer.Music" />
+        <?endforeach?>
+      </Component>
+
+      <!-- Disc images. -->
+      <Component Id="OpenDisc" Guid="355fd39a-61d6-4920-b46e-fa3b82d318b3" Condition="ASSOCDISC=&quot;1&quot;">
+        <RegistryValue Root="HKMU" Key="Software\Classes\WittyMediaPlayer.Disc" Type="string" Value="Disc image" KeyPath="yes" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\WittyMediaPlayer.Disc" Name="FriendlyTypeName" Type="string" Value="Disc image" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\WittyMediaPlayer.Disc\DefaultIcon" Type="string" Value="[INSTALLFOLDER]WittyMediaPlayer.exe,0" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\WittyMediaPlayer.Disc\shell\open\command" Type="string" Value="&quot;[INSTALLFOLDER]WittyMediaPlayer.exe&quot; &quot;%1&quot;" />
+        <?foreach T in $(var.DiscTypes)?>
+        <RegistryValue Root="HKMU" Key="Software\Classes\$(var.T)\OpenWithProgids" Name="WittyMediaPlayer.Disc" Type="string" Value="[NOTHING]" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\Applications\WittyMediaPlayer.exe\SupportedTypes" Name="$(var.T)" Type="string" Value="[NOTHING]" />
+        <RegistryValue Root="HKMU" Key="Software\WittyWilla\WittyMediaPlayer\Capabilities\FileAssociations" Name="$(var.T)" Type="string" Value="WittyMediaPlayer.Disc" />
+        <?endforeach?>
+      </Component>
+    </ComponentGroup>
+
+    <Feature Id="Main" Title="WittyMediaPlayer" Level="1" AllowAbsent="no">
+      <ComponentGroupRef Id="Program" />
+    </Feature>
+
+    <UIRef Id="WittyUI" />
+    <WixVariable Id="WixUIBannerBmp" Value="!(bindpath.res)\banner.bmp" />
+    <WixVariable Id="WixUIDialogBmp" Value="!(bindpath.res)\welcome.bmp" />
+  </Package>
+</Wix>

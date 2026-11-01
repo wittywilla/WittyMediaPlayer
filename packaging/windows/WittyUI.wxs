@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  The installer's wizard: Windows Installer's standard pages, in the order people expect, with two
+  of our own. Who is it for, and a page of plain choices.
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs" xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
+  <Fragment>
+    <Property Id="WITTYSCOPE" Value="me" />
+    <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOX" Value="1" />
+    <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOXTEXT" Value="Open WittyMediaPlayer now" />
+
+    <UI Id="WittyUI">
+      <TextStyle Id="WixUI_Font_Normal" FaceName="Segoe UI" Size="9" />
+      <TextStyle Id="WixUI_Font_Bigger" FaceName="Segoe UI" Size="12" />
+      <TextStyle Id="WixUI_Font_Title" FaceName="Segoe UI" Size="9" Bold="yes" />
+      <Property Id="DefaultUIFont" Value="WixUI_Font_Normal" />
+      <Property Id="WixUI_Mode" Value="Custom" />
+
+      <DialogRef Id="ErrorDlg" />
+      <DialogRef Id="FatalError" />
+      <DialogRef Id="FilesInUse" />
+      <DialogRef Id="MsiRMFilesInUse" />
+      <DialogRef Id="PrepareDlg" />
+      <DialogRef Id="ProgressDlg" />
+      <DialogRef Id="ResumeDlg" />
+      <DialogRef Id="UserExit" />
+      <DialogRef Id="OutOfDiskDlg" />
+      <DialogRef Id="OutOfRbDiskDlg" />
+      <DialogRef Id="WaitForCostingDlg" />
+      <DialogRef Id="CancelDlg" />
+      <DialogRef Id="DiskCostDlg" />
+
+      <Publish Dialog="ExitDialog" Control="Finish" Event="EndDialog" Value="Return" Order="999" />
+
+      <!-- The way through, first install and upgrade. An upgrade already knows who it's for. -->
+      <Publish Dialog="WelcomeDlg" Control="Next" Event="NewDialog" Value="WittyScopeDlg" Condition="NOT Installed AND NOT WIX_UPGRADE_DETECTED" />
+      <Publish Dialog="WelcomeDlg" Control="Next" Event="NewDialog" Value="WittyOptionsDlg" Condition="NOT Installed AND WIX_UPGRADE_DETECTED" />
+      <Publish Dialog="WelcomeDlg" Control="Next" Event="NewDialog" Value="VerifyReadyDlg" Condition="Installed AND PATCH" />
+
+      <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="WittyOptionsDlg" Condition="NOT Installed" Order="1" />
+      <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="MaintenanceTypeDlg" Condition="Installed AND NOT PATCH" Order="2" />
+      <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="WelcomeDlg" Condition="Installed AND PATCH" Order="3" />
+
+      <!-- Opening the .msi of what's installed. -->
+      <Publish Dialog="MaintenanceWelcomeDlg" Control="Next" Event="NewDialog" Value="MaintenanceTypeDlg" />
+      <Publish Dialog="MaintenanceTypeDlg" Control="RepairButton" Event="NewDialog" Value="VerifyReadyDlg" />
+      <Publish Dialog="MaintenanceTypeDlg" Control="RemoveButton" Event="NewDialog" Value="VerifyReadyDlg" />
+      <Publish Dialog="MaintenanceTypeDlg" Control="Back" Event="NewDialog" Value="MaintenanceWelcomeDlg" />
+
+      <Publish Dialog="ExitDialog" Control="Finish" Event="DoAction" Value="OpenApp"
+               Condition="WIXUI_EXITDIALOGOPTIONALCHECKBOX = 1 AND NOT Installed" Order="998" />
+
+      <Dialog Id="WittyScopeDlg" Width="370" Height="270" Title="[ProductName] Setup">
+        <Control Id="BannerBitmap" Type="Bitmap" X="0" Y="0" Width="370" Height="44" TabSkip="no" Text="!(loc.InstallDirDlgBannerBitmap)" />
+        <Control Id="BannerLine" Type="Line" X="0" Y="44" Width="370" Height="0" />
+        <Control Id="BottomLine" Type="Line" X="0" Y="234" Width="370" Height="0" />
+        <Control Id="Title" Type="Text" X="15" Y="6" Width="290" Height="15" Transparent="yes" NoPrefix="yes" Text="{\WixUI_Font_Title}Who is it for?" />
+        <Control Id="Description" Type="Text" X="25" Y="23" Width="280" Height="15" Transparent="yes" NoPrefix="yes" Text="Choose who can use WittyMediaPlayer on this computer." />
+        <Control Id="Scope" Type="RadioButtonGroup" X="25" Y="58" Width="320" Height="120" Property="WITTYSCOPE">
+          <RadioButtonGroup Property="WITTYSCOPE">
+            <RadioButton Value="me" X="0" Y="0" Width="320" Height="16" Text="Just me" />
+            <RadioButton Value="everyone" X="0" Y="62" Width="320" Height="16" Text="Everyone on this computer" />
+          </RadioButtonGroup>
+        </Control>
+        <Control Id="MeText" Type="Text" X="40" Y="76" Width="300" Height="40" NoPrefix="yes"
+                 Text="Needs no administrator. It goes in your own account's folders, where other people on this computer don't see it. Recommended for most people." />
+        <Control Id="EveryoneText" Type="Text" X="40" Y="138" Width="300" Height="40" NoPrefix="yes"
+                 Text="Asks for an administrator, and installs to Program Files. Each person on this computer still has their own settings." />
+        <Control Id="Back" Type="PushButton" X="180" Y="243" Width="56" Height="17" Text="!(loc.WixUIBack)">
+          <Publish Event="NewDialog" Value="WelcomeDlg" />
+        </Control>
+        <Control Id="Next" Type="PushButton" X="236" Y="243" Width="56" Height="17" Default="yes" Text="!(loc.WixUINext)">
+          <Publish Property="MSIINSTALLPERUSER" Value="1" Condition="WITTYSCOPE = &quot;me&quot;" Order="1" />
+          <Publish Property="MSIINSTALLPERUSER" Value="{}" Condition="WITTYSCOPE = &quot;everyone&quot;" Order="2" />
+          <Publish Event="NewDialog" Value="WittyOptionsDlg" Order="3" />
+        </Control>
+        <Control Id="Cancel" Type="PushButton" X="304" Y="243" Width="56" Height="17" Cancel="yes" Text="!(loc.WixUICancel)">
+          <Publish Event="SpawnDialog" Value="CancelDlg" />
+        </Control>
+      </Dialog>
+
+      <Dialog Id="WittyOptionsDlg" Width="370" Height="270" Title="[ProductName] Setup">
+        <Control Id="BannerBitmap" Type="Bitmap" X="0" Y="0" Width="370" Height="44" TabSkip="no" Text="!(loc.InstallDirDlgBannerBitmap)" />
+        <Control Id="BannerLine" Type="Line" X="0" Y="44" Width="370" Height="0" />
+        <Control Id="BottomLine" Type="Line" X="0" Y="234" Width="370" Height="0" />
+        <Control Id="Title" Type="Text" X="15" Y="6" Width="290" Height="15" Transparent="yes" NoPrefix="yes" Text="{\WixUI_Font_Title}A few choices" />
+        <Control Id="Description" Type="Text" X="25" Y="23" Width="280" Height="15" Transparent="yes" NoPrefix="yes" Text="These are all fine as they are." />
+
+        <Control Id="Desktop" Type="CheckBox" X="25" Y="56" Width="320" Height="14" Property="DESKTOPSHORTCUT" CheckBoxValue="1" Text="Put a shortcut on the desktop" />
+
+        <Control Id="TypesTitle" Type="Text" X="25" Y="84" Width="320" Height="14" NoPrefix="yes" Text="List WittyMediaPlayer under Open with for:" />
+        <Control Id="Video" Type="CheckBox" X="25" Y="100" Width="320" Height="14" Property="ASSOCVIDEO" CheckBoxValue="1" Text="Video files (MKV, MP4, AVI and others)" />
+        <Control Id="Music" Type="CheckBox" X="25" Y="118" Width="320" Height="14" Property="ASSOCMUSIC" CheckBoxValue="1" Text="Music files (MP3, FLAC, WAV and others)" />
+        <Control Id="Disc" Type="CheckBox" X="25" Y="136" Width="320" Height="14" Property="ASSOCDISC" CheckBoxValue="1" Text="Disc images (ISO, IMG, CUE and others)" />
+        <Control Id="TypesText" Type="Text" X="25" Y="160" Width="320" Height="48" NoPrefix="yes"
+                 Text="Nothing else changes: the app that opens these files now still opens them. To make WittyMediaPlayer the one that does, choose it in Windows Settings, under Apps, then Default apps." />
+
+        <Control Id="Back" Type="PushButton" X="180" Y="243" Width="56" Height="17" Text="!(loc.WixUIBack)">
+          <Publish Event="NewDialog" Value="WittyScopeDlg" Condition="NOT WIX_UPGRADE_DETECTED" />
+          <Publish Event="NewDialog" Value="WelcomeDlg" Condition="WIX_UPGRADE_DETECTED" />
+        </Control>
+        <Control Id="Next" Type="PushButton" X="236" Y="243" Width="56" Height="17" Default="yes" Text="!(loc.WixUINext)">
+          <Publish Event="NewDialog" Value="VerifyReadyDlg" />
+        </Control>
+        <Control Id="Cancel" Type="PushButton" X="304" Y="243" Width="56" Height="17" Cancel="yes" Text="!(loc.WixUICancel)">
+          <Publish Event="SpawnDialog" Value="CancelDlg" />
+        </Control>
+      </Dialog>
+    </UI>
+
+    <UIRef Id="WixUI_Common" />
+  </Fragment>
+</Wix>
