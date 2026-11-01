@@ -1,0 +1,34 @@
+// WittyMediaPlayer.exe's icon and its details in Properties and Task Manager. Qt takes the
+// window's icon from IDI_ICON1, so the title bar and the taskbar show it too.
+#include <winver.h>
+
+IDI_ICON1 ICON "@WMP_ICON@"
+
+VS_VERSION_INFO VERSIONINFO
+FILEVERSION     @PROJECT_VERSION_MAJOR@,@PROJECT_VERSION_MINOR@,@PROJECT_VERSION_PATCH@,0
+PRODUCTVERSION  @PROJECT_VERSION_MAJOR@,@PROJECT_VERSION_MINOR@,@PROJECT_VERSION_PATCH@,0
+FILEFLAGSMASK   VS_FFI_FILEFLAGSMASK
+FILEFLAGS       0
+FILEOS          VOS_NT_WINDOWS32
+FILETYPE        VFT_APP
+FILESUBTYPE     VFT2_UNKNOWN
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904B0"
+        BEGIN
+            VALUE "CompanyName", "WittyWilla"
+            VALUE "FileDescription", "WittyMediaPlayer"
+            VALUE "FileVersion", "@PROJECT_VERSION@"
+            VALUE "InternalName", "WittyMediaPlayer"
+            VALUE "LegalCopyright", "Copyright WittyWilla and contributors"
+            VALUE "OriginalFilename", "WittyMediaPlayer.exe"
+            VALUE "ProductName", "WittyMediaPlayer"
+            VALUE "ProductVersion", "@PROJECT_VERSION@"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x0409, 1200
+    END
+END
