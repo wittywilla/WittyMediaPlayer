@@ -1,9 +1,6 @@
-<h1 align="center">WittyMediaPlayer</h1>
+# WittyMediaPlayer
 
-<p align="center">
-  <b>Video, audio, DVDs and Blu-rays, on your own computer.</b><br>
-  Real disc menus, straight from a drive, a disc image or a folder. No server, no account, and nothing leaves your computer.
-</p>
+A desktop player for video, audio, DVDs and Blu-rays on your own computer, with real disc menus. It works straight from a drive, a disc image or a folder, with no server and no account. You need it if you want to play discs and files on a PC.
 
 ## What it does
 
@@ -34,7 +31,14 @@
   small updater program has any. (`Qt6Network.dll` is in the folder only because Qt's sound library won't load without it.
   Nothing calls it.)
 
-## Install it
+It doesn't do these yet:
+
+- Blu-ray menus written in Java don't run. The disc plays its titles instead, and the window says so.
+- Sound is stereo with the built-in playback. Surround tracks are mixed down.
+- Windows only for now, so there's no installer or uninstaller for macOS or Linux. Nothing in the design stops other
+  systems: see [DESIGN.md](DESIGN.md).
+
+## How to get it
 
 It needs Windows 10 version 1809 or newer, 64-bit. Download **`WittyMediaPlayer-<version>-windows-amd64.msi`** from
 [Releases](https://github.com/wittywilla/WittyMediaPlayer/releases) and open it. The installer asks three things:
@@ -72,7 +76,7 @@ msiexec /i WittyMediaPlayer-<version>-windows-amd64.msi /qn MSIINSTALLPERUSER=""
 
 An upgrade keeps the last answers to these, whatever a new command line says.
 
-## Remove it
+### Removing it
 
 Use **Settings, Apps, Installed apps**, as for anything else, and choose WittyMediaPlayer. It tells you what it's about to
 do, closes the player if it's open, and asks one question: whether to also delete your settings and the disc modules it
@@ -110,7 +114,22 @@ For scripts:
 `/S` asks nothing and keeps your settings; `/RemoveData` is a full clean-up. It returns at once and works in the
 background, and the file named by `--report` appears when it has finished. `msiexec /x` also works, and keeps your settings.
 
-## Use it
+## What it needs
+
+- Windows 10 version 1809 or newer, 64-bit.
+- VLC, only if you choose to play through its libraries. It isn't needed.
+- A disc drive, only to play or copy from one.
+
+It's built on Qt and FFmpeg, which come with it, and on WittyDVD, WittyBluray, WittyCD, WittyDisc and WittyModule, built in. WittyVisualizer's effects are built in too.
+
+## Platforms
+
+| System | Where it stands |
+|---|---|
+| Windows 10 and later, 64-bit | Built and run from a real Windows machine, with no disc drive attached. The installer has been checked under Wine in a throwaway container and has not been run on real Windows. No real disc has been played from a drive |
+| macOS, Linux, FreeBSD | No build, installer or uninstaller. [DESIGN.md](DESIGN.md) lists what a port needs. Images and folders are read by a helper written in Go, and audio CDs from a drive are written for Windows only |
+
+## How to use it
 
 Open something with **File, Open**, by dropping it on the window, from the list of drives on the start page, from a
 file's **Open with** menu, or from a command line:
@@ -218,6 +237,41 @@ calm mode. Bars, Scope, Rings and Plasma are drawn on the processor, so they run
 WittyVisualizer's seventeen effects, drawn by your graphics card, full screen if you like. Everything goes through a flash
 limiter that no style can get around.
 
+## Building and testing
+
+You need Git for Windows, Python 3 and Go, and a clone of [WittyVisualizer](https://github.com/wittywilla/WittyVisualizer) beside this one (or `WITTYVISUALIZER_DIR` set to one, in a worktree). Everything else is fetched for your user only, with no administrator rights and no accounts. Run these in Git Bash from the repository's top folder. The first takes about ten minutes and 4 GB:
+
+```bash
+bash scripts/setup-toolchain.sh
+```
+
+```bash
+bash scripts/build-windows.sh
+```
+
+The portable folder and zip land in `.build/`. The installer is made from that folder, with the [WiX Toolset](https://wixtoolset.org) 6 on the `PATH` or at `WIX_EXE` (the top of the script says how to get it). Run this in PowerShell, with the version from `CMakeLists.txt`:
+
+```powershell
+packaging\windows\build-msi.ps1 -Version <version> -PackageDir .build\WittyMediaPlayer-<version>-windows-amd64 -OutDir .build
+```
+
+To run the tests:
+
+```bash
+bash scripts/test.sh
+```
+
+They need no one at the screen and use Qt's offscreen platform. Set `WITTY_TEST_DVD` and `WITTY_TEST_BD` to disc images to include real discs, which are only ever read. CI only tests the engine in `engine/`, because the whole player needs the toolchain above.
+
+To test the installer, neither of these installs anything on the computer you run it on:
+
+- `scripts\test\check-msi.ps1` reads the MSI's tables and unpacks it to a folder of your choosing, to check what's in it.
+- `scripts/test/installers-wine.sh` really installs, upgrades and removes it, for one person and for everyone, in a throwaway Docker container with Wine, and compares every file and registry entry from before and after.
+
+`engine/internal/uninstall` has tests that read the player's source and the installer's: they fail if the player starts writing somewhere the uninstaller doesn't know, or the installer writes something it wouldn't remove.
+
+`scripts/check-package.sh` stops the build if a package carries or loads a disc-decryption library or a key database.
+
 ### Trying a real CD
 
 This was built on a laptop with no disc drive, so a real disc is yours to try:
@@ -233,69 +287,17 @@ This was built on a laptop with no disc drive, so a real disc is yours to try:
 8. If you have a scratched disc, try it: the row should say how many sectors were bad, rather than stopping or hiding it.
 9. Take the disc out while it plays. It should say the disc was taken out.
 
-## What doesn't work yet
-
-- Blu-ray menus written in Java don't run. The disc plays its titles instead, and the window says so.
-- Sound is stereo with the built-in playback. Surround tracks are mixed down.
-- Windows only for now, so there's no installer or uninstaller for macOS or Linux. Nothing in the design stops other
-  systems: see [DESIGN.md](DESIGN.md).
-
-## Build it
-
-You need Git for Windows, Python 3 and Go, and a clone of
-[WittyVisualizer](https://github.com/wittywilla/WittyVisualizer) beside this one. Everything else is fetched for
-your user only, with no administrator rights and no accounts. Run these in Git Bash from the repository's top folder:
-
-```bash
-bash scripts/setup-toolchain.sh
-```
-
-```bash
-bash scripts/build-windows.sh
-```
-
-The portable folder and zip land in `.build/`. The installer is made from that folder, with the
-[WiX Toolset](https://wixtoolset.org) 6 on the PATH or at `WIX_EXE` (the top of the script says how to get it). Run this in
-PowerShell, with the version from `CMakeLists.txt`:
-
-```powershell
-packaging\windows\build-msi.ps1 -Version <version> -PackageDir .build\WittyMediaPlayer-<version>-windows-amd64 -OutDir .build
-```
-
-To run the tests:
-
-```bash
-bash scripts/test.sh
-```
-
-They need no one at the screen and use Qt's offscreen platform. Set `WITTY_TEST_DVD` and `WITTY_TEST_BD` to
-disc images to include real discs; those are only ever read.
-
-To test the installer, neither of these installs anything on the computer you run it on:
-
-- `scripts\test\check-msi.ps1` reads the MSI's tables and unpacks it to a folder of your choosing, to check what's in it.
-- `scripts/test/installers-wine.sh` really installs, upgrades and removes it, for one person and for everyone, in a throwaway
-  Docker container with Wine, and compares every file and registry entry from before and after.
-
-`engine/internal/uninstall` has tests that read the player's source and the installer's: they fail if the player starts
-writing somewhere the uninstaller doesn't know, or the installer writes something it wouldn't remove.
-
 ## Licence
 
-**Apache-2.0**, the same as WittyMediaServer. © 2026 WittyWilla and contributors. If you redistribute it or build
-on it, keep the [NOTICE](NOTICE) attribution, *"WittyMediaPlayer, developed by WittyWilla"*.
+Apache-2.0, the same as WittyMediaServer: see [LICENSE](LICENSE) and [NOTICE](NOTICE). If you redistribute it or build on it, keep the NOTICE attribution.
 
-Qt and FFmpeg ship as separate libraries under the LGPL, so you can replace them. See
-[licenses/THIRD-PARTY.txt](licenses/THIRD-PARTY.txt).
+Qt and FFmpeg ship as separate libraries under the LGPL, so you can replace them. LAME, Opus, Vorbis and Ogg are inside FFmpeg's libraries, and zlib and the GCC and mingw-w64 runtimes ship beside them. [licenses/THIRD-PARTY.txt](licenses/THIRD-PARTY.txt) has each one's licence and source.
 
-### Credits
-
-- **[VLC and libVLC](https://www.videolan.org/vlc/libvlc.html)**, by VideoLAN and the VLC contributors, under the LGPL 2.1
-  or later, when you choose them in Settings. WittyMediaPlayer loads them from your own VLC and doesn't ship them.
-  It isn't part of VLC or made by VideoLAN.
+- **[VLC and libVLC](https://www.videolan.org/vlc/libvlc.html)**, by VideoLAN and the VLC contributors, under the LGPL 2.1 or later, when you choose them in Settings. WittyMediaPlayer loads them from your own VLC and doesn't ship them. It isn't part of VLC or made by VideoLAN.
 - **[Qt](https://www.qt.io)**, by The Qt Company and contributors, for the window.
 - **[FFmpeg](https://ffmpeg.org)**, by the FFmpeg developers, for built-in decoding.
-- **WittyDVD**, **WittyBluray**, **WittyDisc** and **WittyModule**, by WittyWilla, for discs.
+- **WittyDVD**, **WittyBluray**, **WittyCD**, **WittyDisc** and **WittyModule**, by WittyWilla, for discs.
+- If you ask, CD names come from [MusicBrainz](https://musicbrainz.org) and covers from the [Cover Art Archive](https://coverartarchive.org).
 
 ## Legal
 
