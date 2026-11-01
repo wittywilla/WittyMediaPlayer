@@ -17,3 +17,5 @@ What changed in WittyMediaPlayer, newest first. What changed before it had a rep
   `bin\`. If you have a shortcut or a script, point it at the new names.
 - **Every program has an icon, a description and a version** in its Properties and in Task Manager, and the player has an icon.
 - A release now includes the source of FFmpeg and LAME, as the licences page always said it did.
+- Looking for your VLC only reads the registry. Before, a player run as an administrator on a computer with no VLC left an
+  empty `VideoLAN` key behind.
