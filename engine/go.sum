@@ -1,0 +1,14 @@
+github.com/wittywilla/wittybluray v0.3.0 h1:pM8iOrnPeE7oJYa7eu4+fpqipiSgnH/agccvinhGpv8=
+github.com/wittywilla/wittybluray v0.3.0/go.mod h1:9IT3an4dMWAiO1VrBr19aEwMz4xu/LrKWWMT12UM/HA=
+github.com/wittywilla/wittybluray/wittyblurayplayer v0.2.0 h1:wrDX6eQTpSWZ0nvU+/f3ny+G3sMtVHeMx10CBFBVQlU=
+github.com/wittywilla/wittybluray/wittyblurayplayer v0.2.0/go.mod h1:1mFmjXy/U8kH/uToVlq4YZIXmD0HYsWvvjEuEDub4qE=
+github.com/wittywilla/wittycd v0.2.0 h1:hq0gZFuAExLwmYc6zgCno45GAltjikgF+xOnbxCZ6Q0=
+github.com/wittywilla/wittycd v0.2.0/go.mod h1:Y65Xh/GL0bkxO/2W8pgxfTTBfu0wSb++k4ejoNNltRQ=
+github.com/wittywilla/wittydisc v0.2.0 h1:ukluqAo2jwerFUG/aI3Kd544f3DMuBD/rSA6DLiSjcI=
+github.com/wittywilla/wittydisc v0.2.0/go.mod h1:qQE6MC1dQtG9GjYNBJNkOt9p2M5FBQ3VqV3k4CMCfLQ=
+github.com/wittywilla/wittydvd v0.3.1 h1:JDzKrEObBfVxjUFe7WXmOcyk1rJCATJFodCANGi+1nE=
+github.com/wittywilla/wittydvd v0.3.1/go.mod h1:fY915hqe416RsSu/4DcVdUqQV93Ky72mpIjieTSnlNc=
+github.com/wittywilla/wittydvd/wittydvdplayer v0.2.0 h1:AZ0EfDI8E70zKzUw66+v1QaOTxg66mnL9SqvDTXVDek=
+github.com/wittywilla/wittydvd/wittydvdplayer v0.2.0/go.mod h1:cnTPJndTs2XJ5rFg6t+/MXyFikcjf9nLxFv8PItRh9A=
+github.com/wittywilla/wittymodule v0.3.0 h1:mJL5qK2/j2GiQytFtJNkJzBE3/aJDzH/m2A6Bgn1v+k=
+github.com/wittywilla/wittymodule v0.3.0/go.mod h1:s4SONzwSeE/5v+HbhiO4H2CaIOxZpjS187rwwQY0kj8=

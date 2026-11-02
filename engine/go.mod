@@ -5,11 +5,11 @@ go 1.26.0
 toolchain go1.27.3
 
 require (
-	github.com/wittywilla/wittybluray/wittyblurayplayer v0.2.0
-	github.com/wittywilla/wittydvd/wittydvdplayer v0.2.0
 	github.com/wittywilla/wittybluray v0.3.0
+	github.com/wittywilla/wittybluray/wittyblurayplayer v0.2.0
 	github.com/wittywilla/wittycd v0.2.0
 	github.com/wittywilla/wittydisc v0.2.0
-	github.com/wittywilla/wittydvd v0.3.0
+	github.com/wittywilla/wittydvd v0.3.1
+	github.com/wittywilla/wittydvd/wittydvdplayer v0.2.0
 	github.com/wittywilla/wittymodule v0.3.0
 )
