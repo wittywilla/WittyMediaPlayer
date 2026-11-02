@@ -26,6 +26,12 @@ mkdir -p "$T/downloads" "$T/src" "$T/tmp"
 # FFmpeg's configure can't use a temporary folder written with backslashes.
 export TMPDIR="$T/tmp"
 
+# Qt's mingw32-make crashes at start on GitHub's Windows machines (0xc0000005), so there the
+# MSYS2 make that comes with them is used. Either builds the same with the same compiler.
+mk() {
+  if [ -n "${GITHUB_ACTIONS:-}" ] && [ -x /c/msys64/usr/bin/make ]; then /c/msys64/usr/bin/make "$@"; else mingw32-make "$@"; fi
+}
+
 fetch() { # <url> <file> <sha256>
   local out="$T/downloads/$2"
   [ -s "$out" ] || curl -fsSL --retry 3 -o "$out" "$1"
@@ -60,7 +66,7 @@ if [ ! -f "$P/lib/libz.a" ]; then
   rm -rf "$T/src/zlib-$ZLIB_VERSION"
   tar -xzf "$T/downloads/zlib-$ZLIB_VERSION.tar.gz" -C "$T/src"
   mkdir -p "$P/include" "$P/lib"
-  (cd "$T/src/zlib-$ZLIB_VERSION" && mingw32-make -s -f win32/Makefile.gcc libz.a CFLAGS="-O2 -w" && cp libz.a "$P/lib/" && cp zlib.h zconf.h "$P/include/")
+  (cd "$T/src/zlib-$ZLIB_VERSION" && mk -s -f win32/Makefile.gcc libz.a CFLAGS="-O2 -w" && cp libz.a "$P/lib/" && cp zlib.h zconf.h "$P/include/")
 fi
 
 # What ripping CDs encodes with, all under licences that fit the LGPL route: LAME for MP3
@@ -163,8 +169,8 @@ if [ ! -f "$P/bin/avcodec-62.dll" ] || [ ! -f "$P/.with-encoders" ]; then
     sed -i -e 's|\$(Q)echo \$\$(filter %.o,\$\$^) > \$\$@.objs|$$(file >$$@.objs,$$(filter %.o,$$^))|' ffbuild/library.mak
     sed -i -e 's|^SLIB_CREATE_DEF_CMD=\(.*\)\$(OBJS) >|SLIB_CREATE_DEF_CMD=$$(file >$$@.defobjs,$(OBJS)) \1 @$$@.defobjs >|' ffbuild/config.mak
     sed -i -e 's|^shift$|shift\ncase "$1" in @*) list=${1#@}; set -- $(cat "$list");; esac|' compat/windows/makedef
-    mingw32-make SHELL=sh RESPONSE_FILES=yes -s -j"$(nproc)" >"$T/ffmpeg-build.log" 2>&1 || { tail -30 "$T/ffmpeg-build.log"; exit 1; }
-    mingw32-make SHELL=sh RESPONSE_FILES=yes -s install >>"$T/ffmpeg-build.log" 2>&1
+    mk SHELL=sh RESPONSE_FILES=yes -s -j"$(nproc)" >"$T/ffmpeg-build.log" 2>&1 || { tail -30 "$T/ffmpeg-build.log"; exit 1; }
+    mk SHELL=sh RESPONSE_FILES=yes -s install >>"$T/ffmpeg-build.log" 2>&1
     touch "$P/.with-encoders"
   )
   grep -i "^License" "$T/ffmpeg-configure.log" || true
