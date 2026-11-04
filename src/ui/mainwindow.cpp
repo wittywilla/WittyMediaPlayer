@@ -983,6 +983,10 @@ void MainWindow::cycleAudio()
     rebuildTrackMenus(); // a key can come before the first list has been made
     if (audioIds_.size() < 2)
         return;
+    if (disc_->active() && disc_->locked(QStringLiteral("audio"))) {
+        showNotice(QStringLiteral("The disc doesn't allow changing the audio here"));
+        return;
+    }
     const int cur = disc_->active() ? disc_->currentAudio() : player_->currentAudioTrack();
     const int at = audioIds_.indexOf(cur);
     const int k = (at + 1) % audioIds_.size();
@@ -1001,6 +1005,10 @@ void MainWindow::cycleSubtitle()
     rebuildTrackMenus();
     if (subIds_.size() < 2)
         return;
+    if (disc_->active() && disc_->locked(QStringLiteral("subtitle"))) {
+        showNotice(QStringLiteral("The disc doesn't allow changing the subtitles here"));
+        return;
+    }
     int at = 0;
     if (disc_->active()) {
         at = subIds_.indexOf(disc_->currentSubtitle());
