@@ -19,5 +19,6 @@ echo "== Engine"
 
 echo "== Player"
 [ -x "$OUT/cmake/wmptests.exe" ] || { echo "Build first: scripts/build-windows.sh" >&2; exit 1; }
-QT_QPA_PLATFORM=offscreen WMP_TEST_FFMPEG="$T/test-ffmpeg/ffmpeg.exe" WMP_TEST_REPO="${WMP_TEST_REPO:-$HERE/../..}" \
+# WMP_TEST_REPO=<a WittyMediaServer checkout> also checks the themes against the project's.
+QT_QPA_PLATFORM=offscreen WMP_TEST_FFMPEG="$T/test-ffmpeg/ffmpeg.exe" WMP_TEST_REPO="${WMP_TEST_REPO:-}" \
   QT_PLUGIN_PATH="$(cygpath -m "$QT/plugins")" "$OUT/cmake/wmptests.exe" "$@"
