@@ -79,6 +79,8 @@ jobs:
             WittyMediaPlayer/.build/WittyMediaPlayer-*.zip
             WittyMediaPlayer/.build/*-SHA256SUMS.txt
           if-no-files-found: error
+          # .build starts with a dot, which the action leaves out unless told.
+          include-hidden-files: true
 
   # Publishing runs no project code at all.
   publish:
