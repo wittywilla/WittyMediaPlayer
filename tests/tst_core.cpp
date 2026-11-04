@@ -751,9 +751,13 @@ void Tests::windowKeyboard()
     QVERIFY(w.handleKey(Qt::Key_Right));
     Q_UNUSED(before);
     QVERIFY(w.handleKey(Qt::Key_S));
+    // Which one was chosen is said on screen and to a screen reader.
+    QVERIFY2(w.shownNotice().startsWith(QLatin1String("Subtitles: ")), qPrintable(w.shownNotice()));
+    QCOMPARE(w.statusText(), w.shownNotice());
     QTRY_VERIFY2_WITH_TIMEOUT(w.player()->currentSubtitleTrack() >= 0, qPrintable(QStringLiteral("subs %1, pos %2, paused %3").arg(w.player()->subtitleTracks().size()).arg(w.player()->position()).arg(w.player()->paused())), 3000);
     const int audio = w.player()->currentAudioTrack();
     QVERIFY(w.handleKey(Qt::Key_A));
+    QVERIFY2(w.shownNotice().startsWith(QLatin1String("Audio: ")), qPrintable(w.shownNotice()));
     QTRY_VERIFY_WITH_TIMEOUT(w.player()->currentAudioTrack() != audio, 3000);
     // Keys it doesn't use are left for the rest of the program.
     QVERIFY(!w.handleKey(Qt::Key_Q));

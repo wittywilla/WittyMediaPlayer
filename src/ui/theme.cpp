@@ -95,6 +95,7 @@ QLabel[role="brand"] { font-size: 38px; font-weight: 650; }
 QLabel[role="heading"] { font-size: 17px; font-weight: 600; }
 QLabel[role="time"] { color: @fg2; font-size: 13px; }
 QLabel[role="message"] { font-size: 15px; }
+QLabel[role="notice"] { background: @bg2; color: @fg; border: 1px solid @bg4; border-radius: @radiuspx; padding: 8px 14px; font-size: 15px; }
 QWidget#messageBox { background: @bg2; border: 1px solid @bg4; border-radius: @radiuspx; }
 QWidget#driveRow { background: @bg3; border-radius: @radiuspx; }
 QMenuBar { background: @bg2; color: @fg2; padding: 2px 6px; }

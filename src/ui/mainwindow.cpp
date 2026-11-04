@@ -172,6 +172,12 @@ MainWindow::MainWindow(bool noAudioDevice, QWidget *parent)
     audioCaption_->hide();
 
     message_ = new MessageOverlay(central_);
+    notice_ = new QLabel(central_);
+    notice_->setProperty("role", QStringLiteral("notice"));
+    notice_->hide();
+    noticeTimer_.setSingleShot(true);
+    noticeTimer_.setInterval(2000);
+    connect(&noticeTimer_, &QTimer::timeout, notice_, &QWidget::hide);
     cd_ = new CdPage(player_, &settings_, central_);
     cd_->hide();
     connect(cd_, &CdPage::backRequested, this, [this] { stopPlayback(); });
@@ -844,6 +850,7 @@ void MainWindow::stopPlayback(bool showStart)
     view_->clearPicture();
     view_->setOverlays({});
     audioCaption_->hide();
+    notice_->hide();
     setVisualizer(false);
     currentPath_.clear();
     isFile_ = false;
@@ -978,11 +985,14 @@ void MainWindow::cycleAudio()
         return;
     const int cur = disc_->active() ? disc_->currentAudio() : player_->currentAudioTrack();
     const int at = audioIds_.indexOf(cur);
-    const int next = audioIds_[(at + 1) % audioIds_.size()];
+    const int k = (at + 1) % audioIds_.size();
+    const int next = audioIds_[k];
     if (disc_->active())
         disc_->switchAudio(next);
     else
         player_->setAudioTrack(next);
+    if (QAction *a = menuAudio_->actions().value(k))
+        showNotice(QStringLiteral("Audio: %1").arg(a->text()));
     QTimer::singleShot(300, this, &MainWindow::rebuildTrackMenus);
 }
 
@@ -1006,6 +1016,10 @@ void MainWindow::cycleSubtitle()
         disc_->switchSubtitle(subIds_[k]);
     else
         player_->setSubtitleTrack(subIds_[k], subExternal_[k]);
+    if (subIds_[k] < 0)
+        showNotice(QStringLiteral("Subtitles off"));
+    else if (QAction *a = menuSubs_->actions().value(k))
+        showNotice(QStringLiteral("Subtitles: %1").arg(a->text()));
     QTimer::singleShot(300, this, &MainWindow::rebuildTrackMenus);
 }
 
@@ -1310,6 +1324,8 @@ void MainWindow::layoutOverlays()
     if (message_->isVisible())
         message_->raise();
     audioCaption_->setGeometry(view_->rect());
+    notice_->adjustSize();
+    notice_->move(16, 16);
     if (viz_ && viz_->isVisible()) {
         viz_->setGeometry(view_->geometry());
         viz_->raise();
@@ -1317,6 +1333,8 @@ void MainWindow::layoutOverlays()
         if (message_->isVisible())
             message_->raise();
     }
+    if (notice_->isVisible())
+        notice_->raise();
     updateHitButtons();
 }
 
@@ -1366,6 +1384,20 @@ void MainWindow::setStatus(const QString &text)
 QString MainWindow::shownMessage() const
 {
     return message_->isVisible() ? message_->label->text() : QString();
+}
+
+void MainWindow::showNotice(const QString &text)
+{
+    setStatus(text);
+    notice_->setText(text);
+    notice_->show();
+    layoutOverlays();
+    noticeTimer_.start();
+}
+
+QString MainWindow::shownNotice() const
+{
+    return notice_->isVisible() ? notice_->text() : QString();
 }
 
 void MainWindow::showMessage(const QString &text, bool stopsPlayback)
