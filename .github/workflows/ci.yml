@@ -21,7 +21,7 @@ jobs:
         run: |
           bad=$(git ls-files -s -z | while IFS=$'\t' read -r -d '' info f; do
             case "$f" in *.sh) ;; *) head -c2 "$f" 2>/dev/null | grep -qa '^#!' || continue ;; esac
-            [ "${info% *}" = 100755 ] || echo "$f"
+            [ "${info%% *}" = 100755 ] || echo "$f"
           done)
           [ -z "$bad" ] || { echo "Not executable in git. Run git update-index --chmod=+x on:"; echo "$bad"; exit 1; }
 
