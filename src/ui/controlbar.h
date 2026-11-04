@@ -94,6 +94,7 @@ private:
     QSlider *volume_;
     QLabel *time_, *total_;
     bool playing_ = false;
+    bool hasMedia_ = false, disc_ = false;
 };
 
 } // namespace wmp

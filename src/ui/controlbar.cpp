@@ -308,8 +308,12 @@ void ControlBar::setFullscreen(bool on)
 
 void ControlBar::setDiscMode(bool disc)
 {
+    disc_ = disc;
     menu_->setVisible(disc);
     title_->setVisible(disc);
+    // Chapters are a disc's: on a file the buttons would do nothing.
+    prev_->setEnabled(hasMedia_ && disc_);
+    next_->setEnabled(hasMedia_ && disc_);
 }
 
 void ControlBar::setSeekable(bool on)
@@ -319,8 +323,11 @@ void ControlBar::setSeekable(bool on)
 
 void ControlBar::setHasMedia(bool on)
 {
-    for (QWidget *w : {static_cast<QWidget *>(play_), static_cast<QWidget *>(prev_), static_cast<QWidget *>(next_), static_cast<QWidget *>(seek_)})
-        w->setEnabled(on);
+    hasMedia_ = on;
+    play_->setEnabled(on);
+    seek_->setEnabled(on);
+    prev_->setEnabled(on && disc_);
+    next_->setEnabled(on && disc_);
     if (!on) {
         seek_->setDuration(0);
         time_->setText(QStringLiteral("0:00"));
