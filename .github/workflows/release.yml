@@ -1,8 +1,8 @@
 # A version tag builds the Windows player and publishes its installer, its portable zip and the
-# libraries' source with a checksum list. Run by hand on a branch (Actions, release, Run workflow),
-# it builds and checks the same files and keeps them as the run's artifact, publishing nothing. The player isn't installed through a server, so it holds
-# no module key. Signing the program itself is a step for when there is a code-signing certificate:
-# docs in its README.
+# libraries' source with a checksum list. Run by hand (Actions, release, Run workflow), it builds
+# and checks the same files and keeps them as the run's artifact, publishing nothing, even on a tag.
+# The player isn't installed through a server, so it holds no module key. Signing the program
+# itself is a step for when there is a code-signing certificate: docs in its README.
 name: release
 on:
   push:
@@ -85,7 +85,8 @@ jobs:
   # Publishing runs no project code at all.
   publish:
     needs: build
-    if: github.ref_type == 'tag'
+    # Only a pushed tag publishes; a run by hand never does.
+    if: github.event_name == 'push' && github.ref_type == 'tag'
     runs-on: ubuntu-latest
     permissions:
       contents: write

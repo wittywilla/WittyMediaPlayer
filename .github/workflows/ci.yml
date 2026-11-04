@@ -34,18 +34,23 @@ jobs:
       run:
         shell: bash
         working-directory: WittyMediaPlayer
-    env:
-      VISUALIZER_TAG: v0.2.1
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
           path: WittyMediaPlayer
+      # The same WittyVisualizer the release builds with, read from release.yml.
+      - name: Which WittyVisualizer
+        id: visualizer
+        run: |
+          tag="$(sed -n 's/^  VISUALIZER_TAG: *//p' .github/workflows/release.yml)"
+          [ -n "$tag" ] || { echo "release.yml names no VISUALIZER_TAG"; exit 1; }
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
           repository: wittywilla/WittyVisualizer
-          ref: ${{ env.VISUALIZER_TAG }}
+          ref: ${{ steps.visualizer.outputs.tag }}
           path: WittyVisualizer
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with:
