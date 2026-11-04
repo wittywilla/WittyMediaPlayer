@@ -277,8 +277,11 @@ QPixmap drawIcon(const QString &name, int size, const QColor &c)
 
 QIcon Themes::icon(const QString &name)
 {
-    // Asked for on every volume step, so each is drawn once per theme.
+    // Asked for on every volume step, so each is drawn once per theme. Emptied while the
+    // application still exists, as pictures mustn't outlive it.
     static QHash<QString, QIcon> made;
+    static const bool emptiedAtExit = (qAddPostRoutine([] { made.clear(); }), true);
+    Q_UNUSED(emptiedAtExit);
     const QString key = current().id + QLatin1Char('/') + name;
     auto it = made.constFind(key);
     if (it != made.constEnd())
