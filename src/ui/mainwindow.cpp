@@ -364,8 +364,13 @@ void MainWindow::buildMenus()
     play->addAction(QStringLiteral("Play or pause\tSpace"), this, &MainWindow::togglePlay);
     play->addAction(QStringLiteral("Back 10 seconds\tLeft"), this, [this] { handleKey(Qt::Key_Left); });
     play->addAction(QStringLiteral("Forward 10 seconds\tRight"), this, [this] { handleKey(Qt::Key_Right); });
-    play->addAction(QStringLiteral("Previous chapter\tP"), this, [this] { handleKey(Qt::Key_P); });
-    play->addAction(QStringLiteral("Next chapter\tN"), this, [this] { handleKey(Qt::Key_N); });
+    QAction *prevChapter = play->addAction(QStringLiteral("Previous chapter\tP"), this, [this] { handleKey(Qt::Key_P); });
+    QAction *nextChapter = play->addAction(QStringLiteral("Next chapter\tN"), this, [this] { handleKey(Qt::Key_N); });
+    // As on the control bar, chapters are a disc's.
+    connect(play, &QMenu::aboutToShow, this, [this, prevChapter, nextChapter] {
+        prevChapter->setEnabled(disc_->active());
+        nextChapter->setEnabled(disc_->active());
+    });
     play->addSeparator();
     play->addAction(QStringLiteral("Volume up\tUp"), this, [this] { setVolumePercent(qMin(100, volume_ + 5)); });
     play->addAction(QStringLiteral("Volume down\tDown"), this, [this] { setVolumePercent(qMax(0, volume_ - 5)); });
