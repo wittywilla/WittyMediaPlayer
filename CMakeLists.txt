@@ -8,7 +8,7 @@ set(CMAKE_AUTOMOC ON)
 # QRhi, which draws the picture, sits in GuiPrivate: the player is tied to this Qt version.
 set(QT_NO_PRIVATE_MODULE_WARNING ON)
 # Qt is linked as shared libraries, so anyone can replace them (the LGPL route).
-find_package(Qt6 6.7 REQUIRED COMPONENTS Core Gui GuiPrivate Widgets Multimedia ShaderTools Test)
+find_package(Qt6 6.8 REQUIRED COMPONENTS Core Gui GuiPrivate Widgets Multimedia ShaderTools Test)
 
 # FFmpeg's libraries and headers: FFMPEG_DIR is what scripts/setup-toolchain.sh built.
 set(FFMPEG_DIR "" CACHE PATH "Folder with FFmpeg's include, lib and bin")
