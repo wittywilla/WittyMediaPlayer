@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/wittywilla/wittymediaplayer/engine/internal/disc"
 )
@@ -19,12 +20,15 @@ type memDisc struct {
 	bad map[int64]bool
 	// tries counts reads, to check retries happen.
 	tries int
+	// slow makes each read take a while, as a drive does, so the clock moves between them.
+	slow time.Duration
 }
 
 func (m *memDisc) Size() int64 { return m.Reader.Size() }
 
 func (m *memDisc) ReadAt(p []byte, off int64) (int, error) {
 	m.tries++
+	time.Sleep(m.slow)
 	for s := off / sector; s*sector < off+int64(len(p)); s++ {
 		if m.bad[s] {
 			return 0, errors.New("the drive couldn't read this sector")
@@ -47,7 +51,9 @@ func TestCopyIsExact(t *testing.T) {
 	data := patterned(500)
 	out := filepath.Join(t.TempDir(), "disc.iso")
 	var reports int
-	res, err := Copy(context.Background(), &memDisc{Reader: bytes.NewReader(data)}, Options{Out: out, Every: 1, Progress: func(Progress) { reports++ }})
+	// Windows' clock moves in steps of up to 16 ms, which a copy from memory can fit inside.
+	src := &memDisc{Reader: bytes.NewReader(data), slow: 20 * time.Millisecond}
+	res, err := Copy(context.Background(), src, Options{Out: out, Every: 1, Progress: func(Progress) { reports++ }})
 	if err != nil {
 		t.Fatal(err)
 	}
