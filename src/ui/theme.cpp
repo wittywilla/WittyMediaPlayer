@@ -8,6 +8,7 @@
 #include <QPainterPath>
 #include <QPalette>
 #include <QPixmap>
+#include <QStyleHints>
 #include <cmath>
 
 namespace wmp {
@@ -179,6 +180,13 @@ void Themes::apply(QApplication *app, const Theme &t)
     p.setColor(QPalette::Disabled, QPalette::WindowText, t.fg3);
     app->setPalette(p);
     app->setStyleSheet(styleSheet(t));
+    // The window's frame and title bar follow the theme, not what Windows uses for its own apps.
+    app->styleHints()->setColorScheme(colorScheme(t));
+}
+
+Qt::ColorScheme Themes::colorScheme(const Theme &t)
+{
+    return luminance(t.bg) < 0.18 ? Qt::ColorScheme::Dark : Qt::ColorScheme::Light;
 }
 
 namespace {
