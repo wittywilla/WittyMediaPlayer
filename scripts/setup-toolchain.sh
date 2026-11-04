@@ -34,7 +34,9 @@ mk() { mingw32-make "$@"; }
 
 fetch() { # <url> <file> <sha256>
   local out="$T/downloads/$2"
-  [ -s "$out" ] || curl -fsSL --retry 3 -o "$out" "$1"
+  # Windows checks each certificate with its issuer, and that server is sometimes down: a check
+  # that can't be made doesn't stop the download, which is compared with its checksum anyway.
+  [ -s "$out" ] || curl -fsSL --retry 3 --retry-all-errors --ssl-revoke-best-effort -o "$out" "$1"
   if [ "$3" != "skip" ]; then
     echo "$3  $out" | sha256sum -c --quiet - || { echo "$2 is not the file this script expects; stopping." >&2; exit 1; }
   fi
