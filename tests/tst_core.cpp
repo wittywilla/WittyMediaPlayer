@@ -186,6 +186,7 @@ private slots:
     void themesAreReadable();
     void themesMatchTheProject();
     void iconsShowWhenDisabled();
+    void frameFollowsTheTheme();
     void imageNames();
 
     void extentReaderJoinsRanges();
@@ -351,6 +352,16 @@ void Tests::iconsShowWhenDisabled()
         };
         QVERIFY2(brightest(off) >= 0 && brightest(off) < brightest(on), qPrintable(name));
     }
+}
+
+// Windows draws the title bar from the colour scheme, so a dark theme asks for a dark one.
+void Tests::frameFollowsTheTheme()
+{
+    for (const QString &id : Themes::ids())
+        QVERIFY2(Themes::colorScheme(Themes::load(id)) == Qt::ColorScheme::Dark, qPrintable(id));
+    Theme light = Themes::load(QStringLiteral("dark"));
+    light.bg = QColor(0xf4f4f6);
+    QVERIFY(Themes::colorScheme(light) == Qt::ColorScheme::Light);
 }
 
 void Tests::imageNames()

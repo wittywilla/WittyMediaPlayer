@@ -30,6 +30,8 @@ public:
     static Theme load(const QString &id);
     static QString styleSheet(const Theme &t);
     static void apply(QApplication *app, const Theme &t);
+    // What the window's frame and title bar should be for this theme: Windows draws them from it.
+    static Qt::ColorScheme colorScheme(const Theme &t);
     static const Theme &current();
     // An icon from the small drawn set: play pause prev next volume mute fullscreen
     // exitfullscreen audio subtitles menu title stop open disc.
