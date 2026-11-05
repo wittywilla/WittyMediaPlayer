@@ -1,11 +1,13 @@
 # A version tag builds the Windows player and publishes its installer, its portable zip and the
-# libraries' source with a checksum list. The player isn't installed through a server, so it holds
-# no module key. Signing the program itself is a step for when there is a code-signing certificate:
-# docs in its README.
+# libraries' source with a checksum list. Run by hand (Actions, release, Run workflow), it builds
+# and checks the same files and keeps them as the run's artifact, publishing nothing, even on a tag.
+# The player isn't installed through a server, so it holds no module key. Signing the program
+# itself is a step for when there is a code-signing certificate: docs in its README.
 name: release
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:
 
 permissions: {}
 
@@ -38,10 +40,14 @@ jobs:
           go-version: "1.27.x"
           check-latest: true
           cache: false
-      - name: The tag must match the version
+      - name: The version, which a tag must match
         run: |
           want="$(sed -n 's/^project(WittyMediaPlayer VERSION \([0-9.]*\).*/\1/p' CMakeLists.txt)"
-          [ "v$want" = "$GITHUB_REF_NAME" ] || { echo "CMakeLists.txt says $want, and the tag is $GITHUB_REF_NAME"; exit 1; }
+          [ -n "$want" ] || { echo "CMakeLists.txt has no version"; exit 1; }
+          if [ "$GITHUB_REF_TYPE" = tag ]; then
+            [ "v$want" = "$GITHUB_REF_NAME" ] || { echo "CMakeLists.txt says $want, and the tag is $GITHUB_REF_NAME"; exit 1; }
+          fi
+          echo "VERSION=$want" >> "$GITHUB_ENV"
       - name: Build
         run: |
           bash scripts/setup-toolchain.sh
@@ -53,18 +59,18 @@ jobs:
       - name: Build the installer
         run: |
           WIX_EXE="$RUNNER_TEMP/wix/wix.exe" powershell.exe -NoProfile -ExecutionPolicy Bypass -File packaging/windows/build-msi.ps1 \
-            -Version "${GITHUB_REF_NAME#v}" -PackageDir ".build/WittyMediaPlayer-${GITHUB_REF_NAME#v}-windows-amd64" -OutDir .build
+            -Version "$VERSION" -PackageDir ".build/WittyMediaPlayer-$VERSION-windows-amd64" -OutDir .build
       - name: Check the installer, without installing it
         run: |
           powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/test/check-msi.ps1 \
-            -Msi ".build/WittyMediaPlayer-${GITHUB_REF_NAME#v}-windows-amd64.msi" -Version "${GITHUB_REF_NAME#v}" \
-            -Scratch "$RUNNER_TEMP/msi-check" -PackageDir ".build/WittyMediaPlayer-${GITHUB_REF_NAME#v}-windows-amd64"
+            -Msi ".build/WittyMediaPlayer-$VERSION-windows-amd64.msi" -Version "$VERSION" \
+            -Scratch "$RUNNER_TEMP/msi-check" -PackageDir ".build/WittyMediaPlayer-$VERSION-windows-amd64"
       - name: Write the checksum list
         run: |
           cd .build
           # What the licences of FFmpeg and LAME ask to go with the program (see licenses/THIRD-PARTY.txt).
-          powershell.exe -NoProfile -Command "Compress-Archive -Path source -DestinationPath WittyMediaPlayer-${GITHUB_REF_NAME#v}-third-party-source.zip"
-          sha256sum WittyMediaPlayer-*.zip WittyMediaPlayer-*.msi > "WittyMediaPlayer-${GITHUB_REF_NAME#v}-SHA256SUMS.txt"
+          powershell.exe -NoProfile -Command "Compress-Archive -Path source -DestinationPath WittyMediaPlayer-$VERSION-third-party-source.zip"
+          sha256sum WittyMediaPlayer-*.zip WittyMediaPlayer-*.msi > "WittyMediaPlayer-$VERSION-SHA256SUMS.txt"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: release-files
@@ -73,10 +79,14 @@ jobs:
             WittyMediaPlayer/.build/WittyMediaPlayer-*.zip
             WittyMediaPlayer/.build/*-SHA256SUMS.txt
           if-no-files-found: error
+          # .build starts with a dot, which the action leaves out unless told.
+          include-hidden-files: true
 
   # Publishing runs no project code at all.
   publish:
     needs: build
+    # Only a pushed tag publishes; a run by hand never does.
+    if: github.event_name == 'push' && github.ref_type == 'tag'
     runs-on: ubuntu-latest
     permissions:
       contents: write

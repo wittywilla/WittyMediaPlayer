@@ -25,7 +25,54 @@ jobs:
           done)
           [ -z "$bad" ] || { echo "Not executable in git. Run git update-index --chmod=+x on:"; echo "$bad"; exit 1; }
 
-  # The whole player needs Qt, built by scripts/setup-toolchain.sh; a release builds it.
+  # The whole player, built and tested as a release builds it. The toolchain is kept between runs
+  # until setup-toolchain.sh changes; a release never uses this copy and builds its own.
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash
+        working-directory: WittyMediaPlayer
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          path: WittyMediaPlayer
+      # The same WittyVisualizer the release builds with, read from release.yml.
+      - name: Which WittyVisualizer
+        id: visualizer
+        run: |
+          tag="$(sed -n 's/^  VISUALIZER_TAG: *//p' .github/workflows/release.yml)"
+          [ -n "$tag" ] || { echo "release.yml names no VISUALIZER_TAG"; exit 1; }
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          repository: wittywilla/WittyVisualizer
+          ref: ${{ steps.visualizer.outputs.tag }}
+          path: WittyVisualizer
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version: "1.27.x"
+          check-latest: true
+          cache: false
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.wittymediaplayer-toolchain/qt
+            ~/.wittymediaplayer-toolchain/nasm
+            ~/.wittymediaplayer-toolchain/ffmpeg-min
+            ~/.wittymediaplayer-toolchain/test-ffmpeg
+            ~/.wittymediaplayer-toolchain/downloads
+          key: wmp-toolchain-${{ hashFiles('WittyMediaPlayer/scripts/setup-toolchain.sh') }}
+      - name: Build
+        run: |
+          bash scripts/setup-toolchain.sh
+          bash scripts/build-windows.sh
+      - name: Test
+        run: bash scripts/test.sh
+
   engine:
     runs-on: ubuntu-latest
     defaults:

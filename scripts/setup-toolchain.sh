@@ -26,15 +26,17 @@ mkdir -p "$T/downloads" "$T/src" "$T/tmp"
 # FFmpeg's configure can't use a temporary folder written with backslashes.
 export TMPDIR="$T/tmp"
 
-# Qt's mingw32-make crashes at start on GitHub's Windows machines (0xc0000005), so there the
-# MSYS2 make that comes with them is used. Either builds the same with the same compiler.
-mk() {
-  if [ -n "${GITHUB_ACTIONS:-}" ] && [ -x /c/msys64/usr/bin/make ]; then /c/msys64/usr/bin/make "$@"; else mingw32-make "$@"; fi
-}
+# Qt's mingw32-make (GNU Make 4.2.1) crashes at start (0xc0000005) when it's given SHELL=sh
+# and there's no SHELL in its environment, which is how GitHub's Windows machines run a step.
+# A shell started by a person exports one; this makes sure of it.
+export SHELL="${SHELL:-/usr/bin/sh}"
+mk() { mingw32-make "$@"; }
 
 fetch() { # <url> <file> <sha256>
   local out="$T/downloads/$2"
-  [ -s "$out" ] || curl -fsSL --retry 3 -o "$out" "$1"
+  # Windows checks each certificate with its issuer, and that server is sometimes down: a check
+  # that can't be made doesn't stop the download, which is compared with its checksum anyway.
+  [ -s "$out" ] || curl -fsSL --retry 3 --retry-all-errors --ssl-revoke-best-effort -o "$out" "$1"
   if [ "$3" != "skip" ]; then
     echo "$3  $out" | sha256sum -c --quiet - || { echo "$2 is not the file this script expects; stopping." >&2; exit 1; }
   fi
