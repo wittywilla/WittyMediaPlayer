@@ -38,6 +38,7 @@
 #include <QImage>
 #include <QTemporaryDir>
 #include <QTest>
+#include <QToolButton>
 
 #ifdef Q_OS_WIN
 #define WIN32_LEAN_AND_MEAN
@@ -204,6 +205,7 @@ private slots:
     void engineClientSurvivesItsHelperCrashing();
     void windowOpensAndRefuses();
     void windowKeyboard();
+    void chapterButtonsAreForDiscs();
 
     void settingsWindow();
     void vlcIdsAndTimes();
@@ -756,6 +758,29 @@ void Tests::windowKeyboard()
     // Keys it doesn't use are left for the rest of the program.
     QVERIFY(!w.handleKey(Qt::Key_Q));
     w.close();
+}
+
+// Previous and next chapter do nothing on a file, so they can't be pressed there.
+void Tests::chapterButtonsAreForDiscs()
+{
+    ControlBar bar;
+    QToolButton *prev = nullptr, *next = nullptr;
+    for (QToolButton *b : bar.findChildren<QToolButton *>()) {
+        if (b->accessibleName() == QLatin1String("Previous chapter"))
+            prev = b;
+        if (b->accessibleName() == QLatin1String("Next chapter"))
+            next = b;
+    }
+    QVERIFY(prev && next);
+    QVERIFY(!prev->isEnabled() && !next->isEnabled());
+    // In the order the window sets them when it opens a file, then a disc.
+    bar.setHasMedia(true);
+    bar.setDiscMode(false);
+    QVERIFY(!prev->isEnabled() && !next->isEnabled());
+    bar.setDiscMode(true);
+    QVERIFY(prev->isEnabled() && next->isEnabled());
+    bar.setHasMedia(false);
+    QVERIFY(!prev->isEnabled() && !next->isEnabled());
 }
 
 // The choice of libraries, with VLC credited where it's chosen.
