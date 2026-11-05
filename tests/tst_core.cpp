@@ -23,12 +23,15 @@
 #include "wvwidget.h"
 
 #include <cmath>
+#include <QActionGroup>
 #include <QDir>
 #include <QElapsedTimer>
 #include <QFile>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QLabel>
+#include <QMenu>
+#include <QMenuBar>
 #include <QPainter>
 #include <QRadioButton>
 #include <QProcess>
@@ -206,6 +209,7 @@ private slots:
     void windowOpensAndRefuses();
     void windowKeyboard();
     void chapterButtonsAreForDiscs();
+    void trackMenusWithNothingOpen();
 
     void settingsWindow();
     void vlcIdsAndTimes();
@@ -785,6 +789,32 @@ void Tests::chapterButtonsAreForDiscs()
     QVERIFY(prev->isEnabled() && next->isEnabled());
     bar.setHasMedia(false);
     QVERIFY(!prev->isEnabled() && !next->isEnabled());
+}
+
+// With nothing open each track menu says so, and remaking the lists leaves nothing behind.
+void Tests::trackMenusWithNothingOpen()
+{
+    MainWindow w(true);
+    QMenu *audio = nullptr, *subs = nullptr;
+    for (QAction *a : w.menuBar()->actions()) {
+        if (a->text() == QLatin1String("&Audio"))
+            audio = a->menu();
+        if (a->text() == QLatin1String("&Subtitles"))
+            subs = a->menu();
+    }
+    QVERIFY(audio && subs);
+    for (QMenu *m : {audio, subs}) {
+        QCOMPARE(m->actions().size(), 1);
+        QVERIFY(!m->actions().first()->isEnabled());
+    }
+    QCOMPARE(subs->actions().first()->text(), QStringLiteral("No subtitles"));
+    // A and S remake the lists before looking at them.
+    for (int i = 0; i < 5; i++) {
+        w.handleKey(Qt::Key_A);
+        w.handleKey(Qt::Key_S);
+    }
+    QCOMPARE(audio->findChildren<QActionGroup *>(Qt::FindDirectChildrenOnly).size(), 1);
+    QCOMPARE(subs->findChildren<QActionGroup *>(Qt::FindDirectChildrenOnly).size(), 1);
 }
 
 // The choice of libraries, with VLC credited where it's chosen.

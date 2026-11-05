@@ -592,6 +592,9 @@ void MainWindow::rebuildTrackMenus()
     audioIds_.clear();
     subIds_.clear();
     subExternal_.clear();
+    // clear() leaves the last list's groups behind, and a disc remakes the lists on every move in its menu.
+    qDeleteAll(menuAudio_->findChildren<QActionGroup *>(Qt::FindDirectChildrenOnly));
+    qDeleteAll(menuSubs_->findChildren<QActionGroup *>(Qt::FindDirectChildrenOnly));
     auto *audioGroup = new QActionGroup(menuAudio_);
     auto *subGroup = new QActionGroup(menuSubs_);
     const auto addAudio = [&](const QString &text, int id, bool current, bool enabled) {
@@ -675,6 +678,8 @@ void MainWindow::rebuildTrackMenus()
     }
     if (menuAudio_->isEmpty())
         menuAudio_->addAction(QStringLiteral("No audio tracks"))->setEnabled(false);
+    if (menuSubs_->isEmpty())
+        menuSubs_->addAction(QStringLiteral("No subtitles"))->setEnabled(false);
     bar_->setHasTracks(hasAudio, hasSubs);
 }
 
@@ -685,6 +690,7 @@ void MainWindow::rebuildDiscMenus()
     menuTitles_->clear();
     menuChapters_->clear();
     menuAngles_->clear();
+    qDeleteAll(menuAngles_->findChildren<QActionGroup *>(Qt::FindDirectChildrenOnly));
     if (!on)
         return;
     for (const DiscTitle &t : disc_->titles()) {
