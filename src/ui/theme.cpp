@@ -180,14 +180,16 @@ void Themes::apply(QApplication *app, const Theme &t)
     app->setStyleSheet(styleSheet(t));
 }
 
-QIcon Themes::icon(const QString &name)
+namespace {
+
+// Drawn on a 48-unit grid, at any size, so a screen at 300% gets as sharp a picture as one at 100%.
+QPixmap drawIcon(const QString &name, int size, const QColor &c)
 {
-    const int size = 48;
     QPixmap pm(size, size);
     pm.fill(Qt::transparent);
     QPainter p(&pm);
     p.setRenderHint(QPainter::Antialiasing);
-    const QColor c = current().fg;
+    p.scale(size / 48.0, size / 48.0);
     p.setBrush(c);
     p.setPen(QPen(c, 4, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
     const auto poly = [&](std::initializer_list<QPointF> pts) { p.drawPolygon(QPolygonF(QList<QPointF>(pts))); };
@@ -268,7 +270,30 @@ QIcon Themes::icon(const QString &name)
         p.drawEllipse(QPointF(24, 24), 4, 4);
     }
     p.end();
-    return QIcon(pm);
+    return pm;
+}
+
+} // namespace
+
+QIcon Themes::icon(const QString &name)
+{
+    // Asked for on every volume step, so each is drawn once per theme. Emptied while the
+    // application still exists, as pictures mustn't outlive it.
+    static QHash<QString, QIcon> made;
+    static const bool emptiedAtExit = (qAddPostRoutine([] { made.clear(); }), true);
+    Q_UNUSED(emptiedAtExit);
+    const QString key = current().id + QLatin1Char('/') + name;
+    auto it = made.constFind(key);
+    if (it != made.constEnd())
+        return *it;
+    // A control that can't be used looks it: drawn in the theme's faintest text colour.
+    QIcon icon;
+    for (const int size : {24, 48, 72, 96}) {
+        icon.addPixmap(drawIcon(name, size, current().fg), QIcon::Normal);
+        icon.addPixmap(drawIcon(name, size, current().fg3), QIcon::Disabled);
+    }
+    made.insert(key, icon);
+    return icon;
 }
 
 } // namespace wmp

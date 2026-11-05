@@ -181,6 +181,7 @@ private slots:
     void colorMatrixRangeBlackAndWhite();
     void themesAreReadable();
     void themesMatchTheProject();
+    void iconsShowWhenDisabled();
     void imageNames();
 
     void extentReaderJoinsRanges();
@@ -322,6 +323,27 @@ void Tests::themesMatchTheProject()
         QVERIFY(mine.open(QIODevice::ReadOnly));
         QVERIFY2(theirs.open(QIODevice::ReadOnly), qPrintable(theirs.fileName()));
         QCOMPARE(QJsonDocument::fromJson(mine.readAll()).object().value("colors"), QJsonDocument::fromJson(theirs.readAll()).object().value("colors"));
+    }
+}
+
+// A control that can't be used must look different, and every icon has a picture big enough for 300%.
+void Tests::iconsShowWhenDisabled()
+{
+    for (const QString &name : {QStringLiteral("play"), QStringLiteral("next"), QStringLiteral("subtitles")}) {
+        const QIcon icon = Themes::icon(name);
+        QCOMPARE(icon.actualSize(QSize(72, 72)), QSize(72, 72));
+        const QImage on = icon.pixmap(QSize(48, 48), 1.0, QIcon::Normal).toImage();
+        const QImage off = icon.pixmap(QSize(48, 48), 1.0, QIcon::Disabled).toImage();
+        QVERIFY2(on != off, qPrintable(name));
+        const auto brightest = [](const QImage &img) {
+            int most = -1;
+            for (int y = 0; y < img.height(); y++)
+                for (int x = 0; x < img.width(); x++)
+                    if (img.pixelColor(x, y).alpha() == 255)
+                        most = qMax(most, img.pixelColor(x, y).lightness());
+            return most;
+        };
+        QVERIFY2(brightest(off) >= 0 && brightest(off) < brightest(on), qPrintable(name));
     }
 }
 

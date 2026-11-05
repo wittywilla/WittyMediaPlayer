@@ -10,6 +10,8 @@ arrives with 0.1.3.
 
 - The release build works on GitHub's Windows machines. Its compiler's `make` crashed there because those machines don't
   name a shell, and now the build names one ([#1](https://github.com/wittywilla/WittyMediaPlayer/issues/1)).
+- Buttons that can't be used, such as Play with nothing open, now look dimmed, and the control bar's icons are sharp on
+  screens set above 200% ([#6](https://github.com/wittywilla/WittyMediaPlayer/issues/6)).
 - Built on the current disc modules: WittyDVD and WittyBluray 0.3.0, WittyCD and WittyDisc 0.2.0, and the module kit 0.3.0. A downloaded disc module now has to use module API 3, the oldest the kit takes.
 - WittyMediaPlayer is now a project of its own, developed and released from this repository.
 - **A real Windows installer.** An MSI with a Start menu entry, for just you or for everyone, with an optional desktop
