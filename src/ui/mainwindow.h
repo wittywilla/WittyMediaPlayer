@@ -56,6 +56,9 @@ public:
     bool handleKey(int key, Qt::KeyboardModifiers mods = Qt::NoModifier);
 
     void showMessage(const QString &text, bool stopsPlayback = false);
+    // A short note over the picture, such as the track just chosen, that goes by itself.
+    void showNotice(const QString &text);
+    QString shownNotice() const;
 
     // Which libraries play the next thing opened: the viewer's choice, from Settings.
     void setUseVlc(bool on);
@@ -115,11 +118,12 @@ private:
     QLabel *announcer_ = nullptr;
     MessageOverlay *message_ = nullptr;
     QLabel *audioCaption_ = nullptr;
+    QLabel *notice_ = nullptr;
     QLabel *engineCredit_ = nullptr;
     QVector<QAbstractButton *> hits_;
     QMenu *menuAudio_ = nullptr, *menuSubs_ = nullptr, *menuDisc_ = nullptr, *menuTitles_ = nullptr, *menuChapters_ = nullptr, *menuAngles_ = nullptr, *menuRecent_ = nullptr, *menuDrives_ = nullptr;
     QAction *actStop_ = nullptr, *actImage_ = nullptr, *actLocks_ = nullptr, *actForced_ = nullptr, *actFull_ = nullptr;
-    QTimer tick_, hideControls_, driveWatch_;
+    QTimer tick_, hideControls_, driveWatch_, noticeTimer_;
     QSettings settings_;
     QString currentPath_;
     QString status_;

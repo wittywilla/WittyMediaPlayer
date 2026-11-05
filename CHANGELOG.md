@@ -14,6 +14,8 @@ arrives with 0.1.3.
   screens set above 200% ([#6](https://github.com/wittywilla/WittyMediaPlayer/issues/6)).
 - Previous and next chapter can only be pressed on a disc. On a file they did nothing
   ([#8](https://github.com/wittywilla/WittyMediaPlayer/issues/8)).
+- **A** and **S** say which audio or subtitle track they chose, for a moment over the picture and to a screen reader
+  ([#10](https://github.com/wittywilla/WittyMediaPlayer/issues/10)).
 - Built on the current disc modules: WittyDVD and WittyBluray 0.3.0, WittyCD and WittyDisc 0.2.0, and the module kit 0.3.0. A downloaded disc module now has to use module API 3, the oldest the kit takes.
 - WittyMediaPlayer is now a project of its own, developed and released from this repository.
 - **A real Windows installer.** An MSI with a Start menu entry, for just you or for everyone, with an optional desktop
