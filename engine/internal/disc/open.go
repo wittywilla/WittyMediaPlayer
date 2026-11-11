@@ -4,6 +4,7 @@
 package disc
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -94,6 +95,7 @@ const (
 	CodeNotVideo       = session.CodeNotVideo
 	CodeAudioCD        = session.CodeAudioCD
 	CodeUnreadable     = session.CodeUnreadable
+	CodeMissing        = session.CodeMissing
 	MsgDVDProtected    = session.MsgDVDProtected
 	MsgBlurayProtected = session.MsgBlurayProtected
 	MsgDriveUnreadable = session.MsgDriveUnreadable
@@ -157,9 +159,33 @@ func NewManager(hostVersion string) *modhost.Manager {
 	return &modhost.Manager{Dir: modhost.DefaultDir(), Host: hostVersion, Keys: modhost.DefaultKeys(), Modules: mods}
 }
 
-// BuiltinHost answers calls with the built-in copies of the modules.
-func BuiltinHost(kind string) *session.Host {
-	return &session.Host{Open: func(path string, drive bool, prefs Prefs) (Session, error) {
-		return Open(path, kind, drive, prefs)
+// Host answers the calls about one open disc: the session contract's, and the two a
+// disc module adds about the engine's ranking of the disc (MethodGuide, MethodChoose).
+type Host interface {
+	Handle(method string, raw json.RawMessage) (any, []byte, error)
+	Close()
+}
+
+// The calls a disc module answers on top of the session contract. Both modules answer
+// them with the same shape, so the window draws one chooser.
+const (
+	// MethodGuide gives the title or playlist the engine picked as the film, why,
+	// how sure it is, and what else the viewer can choose: versions, episodes, other
+	// titles. A module from before these calls refuses it, and the window does without.
+	MethodGuide = wittydvdplayer.MethodGuide
+	// MethodChoose plays one of the guide's choices by its id.
+	MethodChoose = wittydvdplayer.MethodChoose
+)
+
+// BuiltinHost answers calls with the built-in copy of a kind of disc's module.
+func BuiltinHost(kind string) Host {
+	switch kind {
+	case KindDVD:
+		return wittydvdplayer.NewHost()
+	case KindBluray:
+		return wittyblurayplayer.NewHost()
+	}
+	return &session.Host{Open: func(string, bool, Prefs) (Session, error) {
+		return nil, &RefusalError{Code: CodeNotVideo, Message: MsgNotVideo}
 	}}
 }

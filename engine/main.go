@@ -27,7 +27,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/wittywilla/wittydisc/session"
 	"github.com/wittywilla/wittymediaplayer/engine/internal/cdrip"
 	"github.com/wittywilla/wittymediaplayer/engine/internal/disc"
 	"github.com/wittywilla/wittymediaplayer/engine/internal/drives"
@@ -108,7 +107,7 @@ func main() {
 // own process when one is in use, or the built-in copy.
 type helper struct {
 	mgr     *modhost.Manager
-	builtin *session.Host
+	builtin disc.Host
 	remote  *modhost.Remote
 	mod     modhost.Module
 	shaky   bool // a call has failed since the last that worked
@@ -183,7 +182,7 @@ func (h *helper) openDisc(path, kind string, drive bool, prefs json.RawMessage) 
 			h.remote = rem
 			res, _, err := h.call("open", params)
 			if err == nil {
-				return withKind(res, kind)
+				return h.opened(res, kind)
 			}
 			var ce *wittymodule.CallError
 			if errors.As(err, &ce) {
@@ -198,11 +197,14 @@ func (h *helper) openDisc(path, kind string, drive bool, prefs json.RawMessage) 
 		h.closeSession()
 		return nil, nil, err
 	}
-	return withKind(res, kind)
+	return h.opened(res, kind)
 }
 
-// withKind adds what kind of disc it is to a module's answer.
-func withKind(res any, kind string) (any, []byte, error) {
+// opened adds to a module's answer what kind of disc it is, and the module's guide to
+// the disc: which title is the film and why, and what else there is to choose. A
+// downloaded module from before the guide refuses that call; the disc plays all the
+// same, and the window shows no chooser.
+func (h *helper) opened(res any, kind string) (any, []byte, error) {
 	b, err := json.Marshal(res)
 	if err != nil {
 		return nil, nil, err
@@ -213,15 +215,28 @@ func withKind(res any, kind string) (any, []byte, error) {
 	}
 	k, _ := json.Marshal(kind)
 	out["kind"] = k
+	if g, _, err := h.call(disc.MethodGuide, nil); err == nil {
+		if gb, err := json.Marshal(g); err == nil && len(gb) < maxGuide {
+			out["guide"] = gb
+		}
+	} else if h.remote == nil && h.builtin == nil {
+		// The module's process ended while it was asked: this disc isn't open any more.
+		return nil, nil, err
+	}
 	return out, nil, nil
 }
+
+// maxGuide bounds the guide sent with an open disc, well inside the protocol's line.
+const maxGuide = 256 << 10
 
 // openReply answers an "open" call.
 type openReply struct {
 	Kind         string             `json:"kind"`
 	Info         *disc.Info         `json:"info,omitempty"`
 	Presentation *disc.Presentation `json:"presentation,omitempty"`
-	CD           *cdrip.Info        `json:"cd,omitempty"`
+	// Guide is the disc module's guide to the disc, as the module wrote it.
+	Guide json.RawMessage `json:"guide,omitempty"`
+	CD    *cdrip.Info     `json:"cd,omitempty"`
 }
 
 func refusal(err error) error {

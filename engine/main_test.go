@@ -86,8 +86,10 @@ func TestModulesFitThisPlayer(t *testing.T) {
 	}
 }
 
-// The real helpers, signed and installed as a release would be, play a real disc through
-// a process of their own, and leave the window's answers as they were.
+// The real helpers, signed and installed as a release would be, play a disc through a
+// process of their own, and leave the window's answers as they were: the guide to the
+// disc and a choice from it included. The disc is a real one when its variable names
+// one, and otherwise the engine's plain synthetic disc.
 func TestRealHelperPlaysADisc(t *testing.T) {
 	cases := []struct {
 		env, kind, id, entry, pkg string
@@ -99,8 +101,15 @@ func TestRealHelperPlaysADisc(t *testing.T) {
 	for _, c := range cases {
 		path := os.Getenv(c.env)
 		if path == "" {
-			t.Logf("%s is not set", c.env)
-			continue
+			set := loadSynth(c.kind)
+			if set.fatal != "" {
+				t.Fatal(set.fatal)
+			}
+			if set.skip != "" || len(set.list) == 0 {
+				t.Logf("%s is not set, and %s", c.env, set.skip)
+				continue
+			}
+			path = filepath.Join(set.dir, filepath.FromSlash(set.list[0].Path))
 		}
 		pub, priv, _ := ed25519.GenerateKey(nil)
 		data := t.TempDir()
@@ -166,6 +175,23 @@ func TestRealHelperPlaysADisc(t *testing.T) {
 		var p disc.Presentation
 		if err := json.Unmarshal(b, &p); err != nil || p.Media == nil || len(p.Media.Extents) == 0 {
 			t.Fatalf("%v %s", err, b)
+		}
+		// The guide came with the open disc, from the helper's own process, and its
+		// feature plays.
+		var g guideReply
+		if err := json.Unmarshal(reply.Guide, &g); err != nil || g.Kind != c.kind || g.Feature == nil || g.Feature.Title != reply.Info.Main || g.Why == "" {
+			t.Fatalf("the guide through a helper: %v %s", err, reply.Guide)
+		}
+		res, _, err = h.handle(disc.MethodChoose, mustJSON(t, map[string]any{"id": g.Feature.ID}))
+		if err != nil {
+			t.Fatal(err)
+		}
+		b, _ = json.Marshal(res)
+		if err := json.Unmarshal(b, &p); err != nil || p.Kind == "stop" || p.Media == nil || len(p.Media.Extents) == 0 {
+			t.Fatalf("the feature through a helper: %v %s", err, b)
+		}
+		if _, _, err := h.handle(disc.MethodChoose, mustJSON(t, map[string]any{"id": "no-such"})); err == nil || h.remote == nil {
+			t.Errorf("a choice that isn't there: %v, helper running %v", err, h.remote != nil)
 		}
 		// A helper dying costs that session, and the next open still works.
 		_ = h.remote.Kill()
