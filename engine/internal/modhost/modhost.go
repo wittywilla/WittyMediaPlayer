@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 WittyWilla and contributors
+
 // Package modhost runs the player's disc modules the way WittyMediaServer runs its own:
 // each has a built-in copy that always works, and a newer signed release can replace it
 // without a new player. A downloaded version runs as a separate, limited process, is

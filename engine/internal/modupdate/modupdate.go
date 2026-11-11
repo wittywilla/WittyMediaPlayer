@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 WittyWilla and contributors
+
 // Package modupdate looks for and installs newer signed releases of the player's disc
 // modules. It's the only code in the player that uses the network, and it lives in a
 // program of its own that runs only when the viewer asks.

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 WittyWilla and contributors
 // Runs the window with no one at the keyboard, for automated checks.
 #pragma once
 

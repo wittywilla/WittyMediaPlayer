@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 WittyWilla and contributors
 # Runs WittyMediaPlayer's tests with no one at the screen. It opens no windows and
 # plays no sound: Qt's offscreen platform, and sound on a timer instead of a device.
 #

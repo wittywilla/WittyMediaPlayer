@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 WittyWilla and contributors
 // Makes an .iso or .img file from a disc, for a WittyMediaServer library or for
 // playing later. The copy runs in the helper program, which refuses protected discs.
 #pragma once

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 WittyWilla and contributors
 // Shows decoded pictures with menus and subtitles over them, on the graphics card.
 // QRhi picks the system's own graphics API (Direct3D 11 on Windows), so nothing
 // here is tied to one platform.

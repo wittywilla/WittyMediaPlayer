@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 WittyWilla and contributors
 # Gets everything WittyMediaPlayer's Windows build needs, for this user only: no
 # administrator rights, no accounts, nothing installed system-wide.
 #

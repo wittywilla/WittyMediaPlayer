@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 WittyWilla and contributors
 // Plays one thing at a time: demuxes on its own thread, decodes picture and sound on
 // theirs, and keeps them together. Works without Qt's event loop in the decode path;
 // everything reaches the window through queued signals or the VideoSink.

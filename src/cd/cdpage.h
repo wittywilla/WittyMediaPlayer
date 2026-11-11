@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 WittyWilla and contributors
 // The CD screen: a tracklist with checkboxes, a big now-playing area and the controls for
 // copying a disc to music files or to an image. It has its own glossy, early-desktop look,
 // all drawn here, and can follow the app's normal theme instead.

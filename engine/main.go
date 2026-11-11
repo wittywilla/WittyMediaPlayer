@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 WittyWilla and contributors
+
 // wittymediaplayer-engine is the helper behind the WittyMediaPlayer window. It
 // reads disc structures and runs the disc engines in a process of its own, so a
 // damaged or hostile disc can't take the window down, and it needs nothing but

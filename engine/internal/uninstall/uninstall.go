@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 WittyWilla and contributors
+
 // Package uninstall removes WittyMediaPlayer from a Windows computer. Uninstall
 // WittyMediaPlayer.exe is this package with a way of asking.
 //

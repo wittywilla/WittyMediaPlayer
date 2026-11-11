@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 WittyWilla and contributors
 // Turns CD audio into a music file: the formats and qualities on offer, and one encoder
 // writing one file, tags and cover included. Nothing here knows about discs.
 #pragma once

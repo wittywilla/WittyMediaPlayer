@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 WittyWilla and contributors
+
 // Package cdrip reads audio CDs, from a drive or an image, for playing and copying. It
 // reads what the disc gives by ordinary means and nothing more: a disc that won't read
 // normally gets a clear message, and nothing here works around copy protection.

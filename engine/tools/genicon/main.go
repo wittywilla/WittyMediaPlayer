@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 WittyWilla and contributors
+
 // Command genicon draws WittyMediaPlayer's icon, and the pictures the Windows installer's wizard
 // shows. It's a build tool: nothing of it ships.
 //

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 WittyWilla and contributors
 // Runs a disc the way the server's web player does: applies each presentation from
 // the engine, holds stills, loops menus, keeps the disc's own timers, and sends the
 // viewer's keys back along the disc's button links.

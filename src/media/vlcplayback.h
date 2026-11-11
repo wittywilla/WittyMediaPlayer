@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 WittyWilla and contributors
 // Optional playback through the VLC libraries (libVLC, by VideoLAN and its
 // contributors), loaded from a VLC the viewer has installed. None of it ships with
 // this player, the same arrangement as Java for BD-J menus.

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 WittyWilla and contributors
 // Checks that need no one at the screen. They run with Qt's offscreen platform, make
 // their own short clips with a test copy of FFmpeg (WMP_TEST_FFMPEG), and read real
 // discs only when told where (WITTY_TEST_DVD, WITTY_TEST_BD).

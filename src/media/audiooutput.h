@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 WittyWilla and contributors
 // Sound output: a ring of decoded samples the system's audio device pulls from, in
 // a thread of its own. It is also the clock the picture follows.
 #pragma once

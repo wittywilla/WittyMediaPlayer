@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 WittyWilla and contributors
 // An audio CD as one seekable WAV for the decoder. The helper program does the reading,
 // from a drive or an image, one request at a time; everything on this side happens on
 // the demux thread, which also creates and ends the process.

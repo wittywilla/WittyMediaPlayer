@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 WittyWilla and contributors
 #include "mainwindow.h"
 
 #include "../cd/cdpage.h"
@@ -445,8 +447,8 @@ void MainWindow::buildMenus()
             QStringLiteral("<b>WittyMediaPlayer %1</b><br>Plays video, audio, CDs, DVDs and Blu-rays on this computer, and copies CDs. "
                            "It collects nothing, and nothing leaves the computer unless you press a button that says so: "
                            "looking a CD up sends only its track layout to MusicBrainz.<br><br>"
-                           "WittyMediaPlayer, developed by WittyWilla. Apache License 2.0.<br>"
-                           "Uses WittyCD, WittyDVD, WittyBluray and WittyDisc, developed by WittyWilla.<br>"
+                           "WittyMediaPlayer, developed by WittyWilla. GNU GPL v3.0 or later.<br>"
+                           "Uses WittyCD, WittyDVD, WittyBluray and WittyDisc, developed by WittyWilla, under the GNU AGPL v3.0 or later.<br>"
                            "Uses Qt and FFmpeg under the LGPL: they're separate libraries in its folder, which you can replace. "
                            "FFmpeg here includes the LAME MP3 encoder (LGPL) and the Opus, Vorbis and Ogg libraries (BSD), for copying CDs. "
                            "CD names and covers come from MusicBrainz and the Cover Art Archive. "

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 WittyWilla and contributors
 // The look of the window: the project's dark themes, as Qt style sheets and drawn
 // icons. The colours come from the same theme files WittyMediaServer uses.
 #pragma once

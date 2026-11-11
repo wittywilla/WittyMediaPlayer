@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 WittyWilla and contributors
 // WittyMediaPlayer: a desktop media player for video, audio, DVDs and Blu-rays.
 //
 //   WittyMediaPlayer [file, disc image, disc folder or drive]

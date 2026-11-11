@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 WittyWilla and contributors
 # Builds WittyMediaPlayer for Windows amd64 into a portable folder and a zip.
 #
 #   bash scripts/setup-toolchain.sh    (once)

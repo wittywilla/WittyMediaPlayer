@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 WittyWilla and contributors
+
 <#
 .SYNOPSIS
   Runs the real Uninstall WittyMediaPlayer.exe on real Windows against a copy of the package and a

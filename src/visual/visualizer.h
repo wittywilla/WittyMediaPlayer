@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 WittyWilla and contributors
 // Pictures that move with the sound, for the CD screen. It reads the player's audio tap and
 // draws on the processor, small and scaled up, so it stays light on modest machines and needs
 // no graphics card, and it stops altogether when it isn't on screen. WittyVisualizer's shader

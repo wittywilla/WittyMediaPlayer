@@ -6,14 +6,15 @@ This product includes software developed by WittyWilla as part of the
 WittyMediaServer project ("WittyMediaPlayer, developed by WittyWilla").
 https://github.com/wittywilla/WittyMediaServer
 
-Under the Apache License, Version 2.0 (Section 4(d)), any redistribution of
-this software or derivative works must reproduce the attribution notices in
-this NOTICE file - in a NOTICE file, in documentation, or in an "About"
-display of the derivative work.
+This software is licensed under the GNU General Public License v3.0
+or (at your option) any later version: see LICENSE. If you redistribute it or
+build on it, please keep the attribution notices in this NOTICE file - in a
+NOTICE file, in documentation, or in an "About" display.
 
 WittyMediaPlayer is built from the WittyCD, WittyDVD, WittyBluray, WittyDisc and
-WittyModule plugins (Copyright 2026 WittyWilla and contributors, Apache
-License 2.0).
+WittyModule plugins (Copyright 2026 WittyWilla and contributors, GNU Affero
+General Public License v3.0 or later), which stay under that licence inside the
+built app.
 
 Third-party components that ship with the built app are listed in
 licenses/THIRD-PARTY.txt:

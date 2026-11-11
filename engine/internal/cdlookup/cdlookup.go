@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 WittyWilla and contributors
+
 // Package cdlookup asks MusicBrainz and the Cover Art Archive what a CD is. Only the disc's
 // table of contents is sent: no audio, no names and no file paths. It runs only when the
 // viewer asks, in the updater program, the only part of the player with network code.

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 WittyWilla and contributors
+
 // wittymediaplayer-updater looks for and installs newer versions of WittyMediaPlayer's
 // disc modules. It's the only part of the player with network code, and it runs only when
 // the viewer asks. Everything it fetches has to carry the project's signature.

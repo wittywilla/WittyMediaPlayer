@@ -289,7 +289,7 @@ This was built on a laptop with no disc drive, so a real disc is yours to try:
 
 ## Licence
 
-Apache-2.0, the same as WittyMediaServer: see [LICENSE](LICENSE) and [NOTICE](NOTICE). If you redistribute it or build on it, keep the NOTICE attribution.
+GNU GPL v3.0 (or later): see [LICENSE](LICENSE) and [NOTICE](NOTICE). If you redistribute it or build on it, please keep the NOTICE attribution. The Witty disc libraries it is built from are under the GNU AGPL v3.0 (or later), as WittyMediaServer is.
 
 Qt and FFmpeg ship as separate libraries under the LGPL, so you can replace them. LAME, Opus, Vorbis and Ogg are inside FFmpeg's libraries, and zlib and the GCC and mingw-w64 runtimes ship beside them. [licenses/THIRD-PARTY.txt](licenses/THIRD-PARTY.txt) has each one's licence and source.
 

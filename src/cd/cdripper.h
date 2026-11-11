@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 WittyWilla and contributors
 // What an audio CD holds, how its files get named, and the job that copies tracks to
 // them. The helper program reads the disc and sends the samples here to be encoded, so
 // the file only ever appears where the viewer chose. A file is written under a temporary

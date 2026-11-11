@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 WittyWilla and contributors
 // A disc's byte ranges as one file for the demuxer. It copes with what real drives
 // do: a sector that won't read is skipped and counted instead of ending playback,
 // and a disc pulled from the drive is reported as gone.

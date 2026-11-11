@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 WittyWilla and contributors
 // What to play: an ordinary file, or a stretch of a disc described by the engine.
 #pragma once
 

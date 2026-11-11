@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 WittyWilla and contributors
 // The window's end of the helper protocol: one line of JSON per message, with an
 // optional binary blob after it, over the helper's stdin and stdout. Calls are
 // answered in order. Sizes are checked before anything is read.

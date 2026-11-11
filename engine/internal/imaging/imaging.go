@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 WittyWilla and contributors
+
 // Package imaging copies a disc to an .iso or .img file, sector by sector, for a
 // WittyMediaServer library or for playing later.
 //

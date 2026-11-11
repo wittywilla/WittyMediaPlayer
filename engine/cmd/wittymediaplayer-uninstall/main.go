@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 WittyWilla and contributors
+
 // Command wittymediaplayer-uninstall is the uninstaller: Uninstall WittyMediaPlayer.exe, which
 // Installed apps points at. The work is in internal/uninstall.
 //

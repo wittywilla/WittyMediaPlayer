@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 WittyWilla and contributors
+
 <#
 .SYNOPSIS
   Makes the Windows installer (.msi) from the folder scripts/build-windows.sh built.
