@@ -392,9 +392,18 @@ void MainWindow::buildMenus()
     menuDisc_->addAction(QStringLiteral("Disc menu\tM"), disc_, &DiscController::rootMenu);
     menuDisc_->addAction(QStringLiteral("Title menu\tT"), disc_, &DiscController::titleMenu);
     menuDisc_->addAction(QStringLiteral("Resume"), disc_, &DiscController::resume);
-    menuDisc_->addAction(QStringLiteral("Play main feature"), disc_, &DiscController::playMain);
+    actMain_ = menuDisc_->addAction(QStringLiteral("Play main feature"), disc_, &DiscController::playMain);
+    actWhy_ = menuDisc_->addAction(QStringLiteral("Why this title…"), this, &MainWindow::showWhy);
+    actWhy_->setObjectName(QStringLiteral("actWhy"));
     menuDisc_->addAction(QStringLiteral("Skip this clip"), disc_, &DiscController::skip);
     menuTitles_ = menuDisc_->addMenu(QStringLiteral("Titles"));
+    menuTitles_->setObjectName(QStringLiteral("menuTitles"));
+    // A film's other cuts and a TV disc's episodes, as the disc engine found them. Each
+    // shows only on a disc that has some.
+    menuVersions_ = menuDisc_->addMenu(QStringLiteral("Versions"));
+    menuVersions_->setObjectName(QStringLiteral("menuVersions"));
+    menuEpisodes_ = menuDisc_->addMenu(QStringLiteral("Episodes"));
+    menuEpisodes_->setObjectName(QStringLiteral("menuEpisodes"));
     menuChapters_ = menuDisc_->addMenu(QStringLiteral("Chapters"));
     menuAngles_ = menuDisc_->addMenu(QStringLiteral("Camera angle"));
     menuDisc_->addSeparator();
@@ -689,19 +698,73 @@ void MainWindow::rebuildDiscMenus()
 {
     const bool on = disc_->active();
     menuDisc_->setEnabled(on);
+    // A menu inside a menu goes when its parent is cleared; its object is ours to delete.
+    qDeleteAll(menuTitles_->findChildren<QMenu *>(Qt::FindDirectChildrenOnly));
     menuTitles_->clear();
+    menuVersions_->clear();
+    menuEpisodes_->clear();
     menuChapters_->clear();
     menuAngles_->clear();
     qDeleteAll(menuAngles_->findChildren<QActionGroup *>(Qt::FindDirectChildrenOnly));
+    const DiscGuide &guide = disc_->guide();
+    const bool guided = on && guide.present;
+    actMain_->setText(guided && guide.feature.valid() ? QStringLiteral("Play main feature (%1, %2)").arg(guide.feature.label.left(1).toLower() + guide.feature.label.mid(1), ControlBar::formatTime(guide.feature.duration))
+                                                      : QStringLiteral("Play main feature"));
+    actMain_->setToolTip(guided ? guide.why : QString());
+    actWhy_->setText(guided && guide.kind == QLatin1String("bluray") ? QStringLiteral("Why this playlist…") : QStringLiteral("Why this title…"));
+    actWhy_->setVisible(guided);
+    menuVersions_->setTitle(guided ? guide.versionsName() : QStringLiteral("Versions"));
+    menuVersions_->menuAction()->setVisible(guided && !guide.versions.isEmpty());
+    menuEpisodes_->menuAction()->setVisible(guided && !guide.episodes.isEmpty());
     if (!on)
         return;
+    // Titles the engine's guide doesn't list are decoys, or more than a menu can hold:
+    // they go one level down, so a disc with ninety-nine titles still shows its few real ones.
+    QMenu *more = nullptr;
+    int moreShown = 0, moreLeft = 0;
     for (const DiscTitle &t : disc_->titles()) {
         QString text = QStringLiteral("Title %1, %2").arg(t.n).arg(ControlBar::formatTime(t.duration));
         if (t.main)
             text += QStringLiteral(" (main feature)");
-        QAction *a = menuTitles_->addAction(text);
+        else if (const QString detail = guided ? guide.detailFor(t.n) : QString(); !detail.isEmpty())
+            text += QStringLiteral(" (%1)").arg(detail);
+        QMenu *into = menuTitles_;
+        if (guided && !t.main && !guide.lists(t.n)) {
+            if (moreShown >= DiscGuide::kMaxChoices) {
+                moreLeft++;
+                continue;
+            }
+            if (!more) {
+                more = new QMenu(QStringLiteral("More titles"), menuTitles_);
+                more->setObjectName(QStringLiteral("menuMoreTitles"));
+            }
+            into = more;
+            moreShown++;
+        }
+        QAction *a = into->addAction(text);
         const int n = t.n;
         connect(a, &QAction::triggered, this, [this, n] { disc_->playTitle(n, 0); });
+    }
+    if (more) {
+        if (moreLeft > 0)
+            more->addAction(QStringLiteral("and %1 more, which the disc's own menu can reach").arg(moreLeft))->setEnabled(false);
+        menuTitles_->addSeparator();
+        menuTitles_->addMenu(more);
+    }
+    if (guided) {
+        const auto addChoice = [this](QMenu *menu, const DiscChoice &c) {
+            QAction *a = menu->addAction(c.menuText());
+            const QString id = c.id;
+            connect(a, &QAction::triggered, this, [this, id] { disc_->choose(id); });
+        };
+        for (const DiscChoice &c : guide.versions)
+            addChoice(menuVersions_, c);
+        if (guide.playAll.valid() && !guide.episodes.isEmpty()) {
+            addChoice(menuEpisodes_, guide.playAll);
+            menuEpisodes_->addSeparator();
+        }
+        for (const DiscChoice &c : guide.episodes)
+            addChoice(menuEpisodes_, c);
     }
     const auto chapters = disc_->chapters();
     menuChapters_->setEnabled(!chapters.isEmpty() && !disc_->locked(QStringLiteral("chapter")));
@@ -719,6 +782,19 @@ void MainWindow::rebuildDiscMenus()
         angleGroup->addAction(a);
         connect(a, &QAction::triggered, this, [this, i] { disc_->switchAngle(i); });
     }
+}
+
+void MainWindow::showWhy()
+{
+    if (!disc_->active())
+        return;
+    // The counts of what couldn't be read grow as a disc plays: ask again first.
+    disc_->refreshGuide([this] {
+        if (!disc_->active())
+            return;
+        const DiscGuide &guide = disc_->guide();
+        QMessageBox::information(this, guide.kind == QLatin1String("bluray") ? QStringLiteral("Why this playlist") : QStringLiteral("Why this title"), guide.whyText());
+    });
 }
 
 // ---------------------------------------------------------------------- opening
@@ -839,8 +915,14 @@ void MainWindow::openPath(const QString &path)
             disc_->start(o);
             setWindowTitle(QStringLiteral("%1 - WittyMediaPlayer").arg(disc_->label().isEmpty() ? QFileInfo(path).fileName() : disc_->label()));
             const QStringList notes = disc_->notes();
+            const DiscGuide &guide = disc_->guide();
             if (!notes.isEmpty())
                 setStatus(notes.first());
+            else if (const QString pick = guide.summary(); !pick.isEmpty())
+                setStatus(status_.isEmpty() ? pick : status_ + QLatin1Char(' ') + pick);
+            // A pick the engine isn't sure of is worth a moment over the picture.
+            if (guide.present && guide.feature.valid() && guide.level == QLatin1String("low"))
+                showNotice(QStringLiteral("Not sure which %1 is the film. See Disc, Why this %1").arg(guide.unit()));
         }
         bar_->setPlaying(true);
         view_->setFocus();

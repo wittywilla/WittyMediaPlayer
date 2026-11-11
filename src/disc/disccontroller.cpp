@@ -66,6 +66,9 @@ void DiscController::start(const QJsonObject &reply)
 {
     active_ = true;
     info_ = reply.value(QStringLiteral("info")).toObject();
+    guide_ = DiscGuide::fromJson(reply.value(QStringLiteral("guide")).toObject());
+    if (guide_.present && guide_.kind.isEmpty())
+        guide_.kind = kind();
     titles_.clear();
     for (const auto &v : info_.value(QStringLiteral("titles")).toArray()) {
         const QJsonObject o = v.toObject();
@@ -94,6 +97,7 @@ void DiscController::close()
     subs_.clear();
     chapters_.clear();
     title_ = menu_ = media_ = {};
+    guide_ = {};
     art_.clear();
     external_.clear();
     view_->setOverlays({});
@@ -238,7 +242,9 @@ void DiscController::apply(const QJsonObject &p)
     }
 
     const QString reason = p.value(QStringLiteral("reason")).toString();
-    if (!reason.isEmpty() && reason.contains(QLatin1String("Java")))
+    // Why the disc isn't doing what it normally would: a Java menu this player doesn't
+    // run, or a disc that starts nothing by itself. Either way the film is playing instead.
+    if (!reason.isEmpty() && (reason.contains(QLatin1String("Java")) || reason.contains(QLatin1String("main feature"))))
         emit message(reason);
 
     const double fromButtons = menu_.value(QStringLiteral("buttonsFromSec")).toDouble();
@@ -792,6 +798,47 @@ void DiscController::playTitle(int ttn, int chapter)
     engine_->call(QStringLiteral("title"), {{"ttn", ttn}, {"chapter", chapter}}, [this](const EngineReply &r) {
         if (active_ && r.ok())
             apply(r.result.toObject());
+    });
+}
+
+void DiscController::choose(const QString &id)
+{
+    if (!active_ || id.isEmpty())
+        return;
+    engine_->call(QStringLiteral("choose"), {{"id", id}}, [this](const EngineReply &r) {
+        if (!active_)
+            return;
+        if (r.ok())
+            apply(r.result.toObject());
+        else
+            emit message(r.error);
+    });
+}
+
+void DiscController::playMain()
+{
+    if (guide_.present && guide_.feature.valid())
+        choose(guide_.feature.id);
+    else
+        playTitle(mainTitle(), 0);
+}
+
+void DiscController::refreshGuide(std::function<void()> done)
+{
+    if (!active_ || !guide_.present) {
+        if (done)
+            done();
+        return;
+    }
+    engine_->call(QStringLiteral("guide"), {}, [this, done](const EngineReply &r) {
+        if (active_ && r.ok() && r.result.isObject()) {
+            const QString kind = guide_.kind;
+            guide_ = DiscGuide::fromJson(r.result.toObject());
+            if (guide_.kind.isEmpty())
+                guide_.kind = kind;
+        }
+        if (done)
+            done();
     });
 }
 

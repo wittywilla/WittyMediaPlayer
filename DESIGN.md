@@ -73,6 +73,16 @@ The Go `internal` rule stops the helper importing the server's session packages,
 adapted for direct playback. Moving the shared part into a module both can use is worth doing when
 either side next changes much.
 
+**Which title is the film** is the disc engines' answer, not the window's. With the answer to `open`, the helper sends
+the disc module's `guide`: the title or playlist picked as the film, one sentence on why, how sure the pick is, the film's
+whole length, its other versions, a TV disc's episodes, the other titles worth choosing, and the engine's warnings.
+`choose` plays one of those by its id. The window only draws them (`DiscGuide` in `src/disc/discguide.cpp`): it caps every
+list, and treats the guide as something a downloaded module wrote, which may be missing or odd. A module from before the
+guide refuses the call, and the disc plays as it always did, with no chooser. The two calls live in the modules
+(`guide.go` in `wittydvdplayer` and `wittyblurayplayer`), so they update with them. The shape is the same for both kinds
+of disc, written out once in each module because WittyDisc's `session` contract doesn't hold it yet: moving it there is
+the tidy next step. WittyBluray's optional second opinion from a `libbluray` the viewer has installed is never asked for.
+
 **Subtitles** are decoded in the stream as it plays, not by the helper reading the disc a second time. That
 matters on a real drive, where a second reader means constant seeking. Blu-ray text subtitles and subtitles in a
 sub-path aren't in the main stream, so the helper still provides those.

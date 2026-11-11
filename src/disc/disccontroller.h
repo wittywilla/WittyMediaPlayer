@@ -6,6 +6,7 @@
 #pragma once
 
 #include "../engine/engineclient.h"
+#include "discguide.h"
 #include "../media/player.h"
 #include "../video/videoview.h"
 
@@ -64,6 +65,9 @@ public:
     QStringList notes() const;
     QVector<DiscTitle> titles() const { return titles_; }
     int mainTitle() const { return info_.value(QStringLiteral("mainTitle")).toInt(); }
+    // The disc engine's guide to this disc: the film it picked and why, and the
+    // versions, episodes and other titles there are to choose.
+    const DiscGuide &guide() const { return guide_; }
 
     QString presentationKind() const { return kind_; }
     bool inTitle() const { return kind_ == QLatin1String("title"); }
@@ -74,6 +78,8 @@ public:
     QVector<double> chapters() const { return chapters_; }
     int currentChapter(double pos) const;
     double titleDuration() const;
+    // Where in the title the stream being played began.
+    double titleStart() const { return title_.value(QStringLiteral("startSec")).toDouble(); }
     QVector<DiscTrack> audioTracks() const { return audio_; }
     QVector<DiscTrack> subtitleTracks() const { return subs_; }
     int currentAudio() const { return title_.value(QStringLiteral("audioStream")).toInt(-1); }
@@ -112,8 +118,13 @@ public:
     void switchAudio(int n);
     void switchSubtitle(int n);
     void switchAngle(int n);
-    // Plays the disc's main feature, whatever the menus are doing.
-    void playMain() { playTitle(mainTitle(), 0); }
+    // Plays one of the guide's choices: the feature, a version, an episode, another title.
+    void choose(const QString &id);
+    // Plays the disc's main feature, whatever the menus are doing: whole and in the
+    // disc's order when the engine's guide says how, else the main title by its number.
+    void playMain();
+    // Asks the engine for its guide again, for the counts that change as a disc is read.
+    void refreshGuide(std::function<void()> done);
     bool togglePauseAllowed() const { return !locked(QStringLiteral("pause")); }
 
 signals:
@@ -144,6 +155,7 @@ private:
     VideoView *view_;
     bool active_ = false;
     QJsonObject info_;
+    DiscGuide guide_;
     QVector<DiscTitle> titles_;
 
     QString kind_;

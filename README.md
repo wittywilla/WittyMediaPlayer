@@ -9,6 +9,9 @@ A desktop player for video, audio, DVDs and Blu-rays on your own computer, with 
 - **Plays DVDs and Blu-rays with their real menus:** arrows, Enter and the mouse work the disc's own
   buttons, with title, chapter and angle controls, using the same engines as
   [WittyMediaServer](https://github.com/wittywilla/WittyMediaServer).
+- **Finds the film on a disc that hides it:** some discs carry dozens of decoy titles, or cut the film into pieces.
+  The disc engines work out which title is the film from the disc's index alone, and **Disc, Why this title** says how
+  they decided and how sure they are. A film's other cuts, and a TV disc's episodes, are in the **Disc** menu to choose from.
 - **Plays from a disc drive directly,** as well as from `.iso` and `.img` images and `VIDEO_TS` or `BDMV` folders.
 - **Makes disc images:** copies a disc to one `.iso` or `.img` file to keep, play later, or add to a
   WittyMediaServer library.
@@ -185,6 +188,23 @@ On a disc, in its menus:
 
 Tab reaches every control, and screen readers can read them, including a disc's menu buttons.
 
+### Choosing what to watch on a disc
+
+A disc's own menu is still the first way to choose. The **Disc** menu adds what the disc engines found by reading the
+disc's index:
+
+| In the Disc menu | What it does |
+|---|---|
+| **Play main feature** | Plays the film, and says which title that is and how long. A film the disc cuts into several titles plays as one, with one seek bar, in the disc's own order |
+| **Why this title…** | Says why that title was picked, how sure the pick is, what else was noticed (decoy titles, a film in several titles, places where the disc's index was mended) and how many sectors of the index couldn't be read |
+| **Titles** | The titles worth choosing, each with what it is. Decoys are one level down, under **More titles** |
+| **Versions** (DVD) or **Editions** (Blu-ray) | A film's other cuts, camera angles and the cuts a parental level chooses. Shown when the disc has some |
+| **Episodes** | A TV disc's episodes in viewing order, with **Play all** first. Shown when the disc has some |
+
+None of this unlocks anything: it comes from the parts of a disc that are never scrambled, and a copy-protected disc is
+still refused. On a Blu-ray, the engine's optional comparison with a `libbluray` of your own is not used by the player
+and has no setting here.
+
 ### Making a disc image
 
 Put the disc in a drive, then choose **File, Make disc image** or the button beside the drive on the start page.
@@ -261,7 +281,7 @@ To run the tests:
 bash scripts/test.sh
 ```
 
-They need no one at the screen and use Qt's offscreen platform. Set `WITTY_TEST_DVD` and `WITTY_TEST_BD` to disc images to include real discs, which are only ever read. CI only tests the engine in `engine/`, because the whole player needs the toolchain above.
+They need no one at the screen and use Qt's offscreen platform. Set `WITTY_TEST_DVD` and `WITTY_TEST_BD` to disc images to include real discs, which are only ever read. The disc engines' synthetic discs (a film among decoys, a film cut into titles, TV discs, a film with two cuts) are played too: the engine's tests write them out themselves when WittyDVD and WittyBluray are cloned beside this repository, and the window's tests play them when `WITTY_TEST_SYNTH_DVD` and `WITTY_TEST_SYNTH_BD` name the folders those engines' `TestExportSyntheticDiscs` wrote. CI only tests the engine in `engine/`, because the whole player needs the toolchain above.
 
 To test the installer, neither of these installs anything on the computer you run it on:
 

@@ -42,6 +42,7 @@ qt_add_library(wmpcore STATIC
     src/video/videoview.h src/video/videoview.cpp
     src/engine/engineclient.h src/engine/engineclient.cpp
     src/disc/disccontroller.h src/disc/disccontroller.cpp
+    src/disc/discguide.h src/disc/discguide.cpp
     src/ui/theme.h src/ui/theme.cpp
     src/ui/controlbar.h src/ui/controlbar.cpp
     src/ui/subtitlepaint.h src/ui/subtitlepaint.cpp

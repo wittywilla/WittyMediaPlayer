@@ -2,7 +2,9 @@
 // Copyright (C) 2026 WittyWilla and contributors
 // Checks that need no one at the screen. They run with Qt's offscreen platform, make
 // their own short clips with a test copy of FFmpeg (WMP_TEST_FFMPEG), and read real
-// discs only when told where (WITTY_TEST_DVD, WITTY_TEST_BD).
+// discs only when told where (WITTY_TEST_DVD, WITTY_TEST_BD). The disc engines' synthetic
+// discs are played when their folders are named (WITTY_TEST_SYNTH_DVD, WITTY_TEST_SYNTH_BD):
+// each engine writes them, with expected.json, by its TestExportSyntheticDiscs.
 #include "cd/audioencoder.h"
 #include "cd/cdpage.h"
 #include "cd/cdripper.h"
@@ -218,6 +220,11 @@ private slots:
     void vlcIdsAndTimes();
     void vlcPlaysAClip();
     void vlcCantReadADiscModule();
+
+    void discGuideReads();
+    void discGuideDoubtsWhatIsOdd();
+    void syntheticDvdsOfferTheirChoices();
+    void syntheticBluraysOfferTheirChoices();
 
     void realDvdMenusAndPlayback();
     void realBluray();
@@ -935,6 +942,311 @@ void Tests::vlcCantReadADiscModule()
     for (const char *m : {"libdvdnav_plugin.dll", "libdvdread_plugin.dll", "liblibbluray_plugin.dll"})
         QVERIFY2(!GetModuleHandleA(m), m);
 #endif
+}
+
+// The texts of a menu, without the marks of shortcut keys.
+static QStringList menuTexts(const QMenu *menu)
+{
+    QStringList out;
+    for (const QAction *a : menu->actions())
+        if (!a->isSeparator())
+            out << a->text();
+    return out;
+}
+
+static QAction *menuAction(const QMenu *menu, const QString &starts)
+{
+    for (QAction *a : menu->actions())
+        if (a->text().startsWith(starts))
+            return a;
+    return nullptr;
+}
+
+void Tests::discGuideReads()
+{
+    const QByteArray json = R"json({"kind":"dvd",
+        "feature":{"id":"feature","kind":"feature","label":"Titles 7, 3, 9, 2","detail":"one film in 4 titles","title":7,"titles":[7,3,9,2],"durationSec":7200,"chapters":30,"source":"chain","oneStream":true},
+        "why":"Title 7 is the main feature because the disc starts it by itself.",
+        "reasons":["The feature runs through 4 titles (7, 3, 9, 2)."],
+        "confidence":0.99,"level":"high",
+        "versions":[{"id":"cut:1","kind":"version","label":"Shorter cut (title 1)","title":1,"durationSec":3600}],
+        "episodes":[{"id":"episode:1","kind":"episode","label":"Episode 1","detail":"in title 5, from 0:00:00","title":5,"durationSec":1296},
+                    {"id":"episode:2","kind":"episode","label":"Episode 2","detail":"in title 5, from 0:21:36","title":5,"durationSec":1314,"startSec":1296,"chapter":7}],
+        "playAll":{"id":"playall","kind":"playAll","label":"Play all","title":5,"durationSec":8046},
+        "others":[{"id":"title:6","kind":"title","label":"Title 6","detail":"trailer","title":6,"durationSec":150}],
+        "decoys":9,"hidden":9,
+        "warnings":["This disc has 9 decoy titles."],
+        "repairs":["VTS 1: the cell table was mended from the backup."],"repairCount":3,
+        "paddedSectors":2,"readRetries":5})json";
+    const DiscGuide g = DiscGuide::fromJson(QJsonDocument::fromJson(json).object());
+    QVERIFY(g.present && g.feature.valid());
+    QCOMPARE(g.feature.titles, (QVector<int>{7, 3, 9, 2}));
+    QCOMPARE(g.unit(), QStringLiteral("title"));
+    QCOMPARE(g.versionsName(), QStringLiteral("Versions"));
+    QCOMPARE(g.summary(), QStringLiteral("The main feature is titles 7, 3, 9, 2, 2:00:00. The disc engine is sure of it."));
+    // What the menus say.
+    QCOMPARE(g.versions[0].menuText(), QStringLiteral("Shorter cut (title 1), 1:00:00"));
+    QCOMPARE(g.episodes[1].menuText(), QStringLiteral("Episode 2, 21:54 (in title 5, from 0:21:36)"));
+    QCOMPARE(g.episodes[1].startSec, 1296.0);
+    QCOMPARE(g.playAll.menuText(), QStringLiteral("Play all, 2:14:06"));
+    // Which titles it lists by themselves: the film's parts, the cut, the play-all, the trailer.
+    for (int t : {7, 3, 9, 2, 1, 5, 6})
+        QVERIFY2(g.lists(t), qPrintable(QString::number(t)));
+    QVERIFY(!g.lists(4) && !g.lists(0));
+    QCOMPARE(g.detailFor(9), QStringLiteral("part 3 of the main feature"));
+    QCOMPARE(g.detailFor(6), QStringLiteral("trailer"));
+    QVERIFY(g.detailFor(4).isEmpty());
+    // The answer to "why this title" has the reason, how sure, the length, the parts,
+    // the warnings and what was mended or padded, and says nothing was unlocked.
+    const QString why = g.whyText();
+    for (const char *part : {"Title 7 is the main feature because the disc starts it by itself.", "How sure: high (99%).", "Length: 2:00:00, 30 chapters.",
+                             "4 titles (7, 3, 9, 2). They play here as one film", "This disc has 9 decoy titles.", "9 decoy titles are left out of the menus",
+                             "disagreed in 3 places", "the cell table was mended", "and 2 more.", "2 sectors of the disc's index couldn't be read and were taken as empty", "never from unlocking anything"})
+        QVERIFY2(why.contains(QLatin1String(part)), part);
+
+    // A Blu-ray's words.
+    const DiscGuide bd = DiscGuide::fromJson(QJsonDocument::fromJson(R"json({"kind":"bluray","level":"medium","confidence":0.7,
+        "feature":{"id":"feature","kind":"feature","label":"Playlist 00100","title":100,"durationSec":6084.7,"chapters":11},
+        "versions":[{"id":"edition:101","kind":"version","label":"Longest cut","detail":"playlist 00101","title":101,"durationSec":6804},
+                    {"id":"edition:100","kind":"version","label":"Shortest cut","detail":"playlist 00100","title":100,"durationSec":6084,"main":true}],
+        "repairs":["Clip 00003 is shorter than its information says."]})json").object());
+    QCOMPARE(bd.unit(), QStringLiteral("playlist"));
+    QCOMPARE(bd.versionsName(), QStringLiteral("Editions"));
+    QCOMPARE(bd.versions[1].menuText(), QStringLiteral("Shortest cut, 1:41:24 (main feature)"));
+    QCOMPARE(bd.versions[0].menuText(), QStringLiteral("Longest cut, 1:53:24 (playlist 00101)"));
+    QCOMPARE(bd.summary(), QStringLiteral("The main feature is playlist 00100, 1:41:24. The disc engine is fairly sure of it."));
+    QVERIFY(bd.whyText().contains(QLatin1String("playlists, clip information and stream files disagree in 1 place")));
+}
+
+// A guide is what a disc module sent: an older module sends none, and a damaged one may
+// send anything.
+void Tests::discGuideDoubtsWhatIsOdd()
+{
+    const DiscGuide none = DiscGuide::fromJson({});
+    QVERIFY(!none.present && none.summary().isEmpty() && !none.lists(1));
+    QVERIFY(none.whyText().contains(QLatin1String("from before it could say why")));
+
+    QJsonArray many;
+    for (int i = 0; i < 5000; i++)
+        many.append(QJsonObject{{"id", QStringLiteral("title:%1").arg(i)}, {"label", QStringLiteral("Title %1").arg(i)}, {"title", i}, {"durationSec", 60}});
+    many.append(QJsonObject{{"label", "no id"}});
+    many.append(QStringLiteral("not an object"));
+    QJsonArray notes;
+    for (int i = 0; i < 500; i++)
+        notes.append(QStringLiteral("note %1").arg(i));
+    const DiscGuide g = DiscGuide::fromJson({{"kind", "dvd"}, {"level", "certain"}, {"confidence", 7}, {"others", many}, {"episodes", 12}, {"warnings", notes}, {"reasons", QStringLiteral("one")},
+                                             {"feature", QJsonObject{{"id", "feature"}, {"label", "Title 1 & more"}, {"title", 1}, {"durationSec", -5}}}, {"decoys", -3}, {"paddedSectors", -1}});
+    QVERIFY(g.present);
+    QCOMPARE(g.others.size(), DiscGuide::kMaxChoices);
+    QVERIFY(g.episodes.isEmpty() && g.reasons.isEmpty());
+    QCOMPARE(g.warnings.size(), DiscGuide::kMaxNotes);
+    QCOMPARE(g.level, QStringLiteral("low"));
+    QCOMPARE(g.confidence, 1.0);
+    QCOMPARE(g.feature.duration, 0.0);
+    QCOMPARE(g.decoys, 0);
+    QCOMPARE(g.paddedSectors, qint64(0));
+    // A name with "&" in it isn't a shortcut key.
+    QCOMPARE(g.feature.menuText(), QStringLiteral("Title 1 && more"));
+    QVERIFY(g.summary().contains(QLatin1String("isn't sure")));
+    // A feature that names nothing is no feature.
+    const DiscGuide blank = DiscGuide::fromJson({{"kind", "bluray"}, {"feature", QJsonObject{{"title", 3}}}});
+    QVERIFY(blank.present && !blank.feature.valid() && blank.summary().isEmpty());
+    QVERIFY(blank.whyText().contains(QLatin1String("found nothing")));
+}
+
+// One of an engine's synthetic discs, from the folder its export wrote, with what the
+// engine says the right answer is. Empty when the folder isn't named or has no such disc.
+static QJsonObject synthDisc(const char *env, const QString &name, QString *path)
+{
+    const QString dir = qEnvironmentVariable(env);
+    QFile list(QDir(dir).filePath(QStringLiteral("expected.json")));
+    if (dir.isEmpty() || !list.open(QIODevice::ReadOnly))
+        return {};
+    for (const auto &v : QJsonDocument::fromJson(list.readAll()).array()) {
+        const QJsonObject o = v.toObject();
+        if (o.value(QStringLiteral("path")).toString() == name) {
+            *path = QDir(dir).filePath(name);
+            return o;
+        }
+    }
+    return {};
+}
+
+// The synthetic discs hold no video, so every clip would be over at once and the disc
+// would run through its program to the end before anything could be chosen. This keeps
+// the window from telling the disc a clip has ended; what is checked is what the window
+// offers and what it asks the engine to play.
+static void holdTheDisc(MainWindow &w)
+{
+    QObject::disconnect(w.player(), &Player::ended, w.disc(), nullptr);
+}
+
+void Tests::syntheticDvdsOfferTheirChoices()
+{
+    QString path;
+    QJsonObject want = synthDisc("WITTY_TEST_SYNTH_DVD", QStringLiteral("chained-fakes"), &path);
+    if (want.isEmpty() || !QFile::exists(EngineClient::enginePath()))
+        QSKIP("WITTY_TEST_SYNTH_DVD doesn't name WittyDVD's exported synthetic discs");
+    {
+        // A film cut into four titles among decoys.
+        MainWindow w(true);
+        holdTheDisc(w);
+        w.show();
+        w.openPath(path);
+        QTRY_VERIFY_WITH_TIMEOUT(w.disc()->active(), 15000);
+        const DiscGuide &g = w.disc()->guide();
+        QVERIFY(g.present && g.feature.valid());
+        QCOMPARE(g.feature.title, want.value("main").toInt());
+        QCOMPARE(w.disc()->mainTitle(), want.value("main").toInt());
+        QCOMPARE(g.feature.titles.size(), want.value("feature").toArray().size());
+        QVERIFY(qAbs(g.feature.duration - want.value("featureSec").toDouble()) < 1);
+        QVERIFY(g.decoys >= want.value("minDecoys").toInt());
+        QVERIFY2(w.statusText().contains(QLatin1String("The main feature is titles 7, 3, 9, 2, 2:00:00")), qPrintable(w.statusText()));
+        QVERIFY(g.whyText().contains(QLatin1String("They play here as one film")));
+        // The Disc menu: the feature by name, the question, and the decoys one level down.
+        auto *titles = w.findChild<QMenu *>(QStringLiteral("menuTitles"));
+        auto *versions = w.findChild<QMenu *>(QStringLiteral("menuVersions"));
+        auto *episodes = w.findChild<QMenu *>(QStringLiteral("menuEpisodes"));
+        auto *whyAct = w.findChild<QAction *>(QStringLiteral("actWhy"));
+        QVERIFY(titles && versions && episodes && whyAct);
+        QVERIFY(whyAct->isVisible());
+        QCOMPARE(whyAct->text(), QStringLiteral("Why this title…"));
+        QVERIFY(!versions->menuAction()->isVisible() && !episodes->menuAction()->isVisible());
+        auto *more = titles->findChild<QMenu *>(QStringLiteral("menuMoreTitles"));
+        QVERIFY(more);
+        QCOMPARE(int(menuTexts(titles).size()) - 1 + int(menuTexts(more).size()), want.value("titles").toInt());
+        QCOMPARE(int(menuTexts(titles).size()) - 1, g.feature.titles.size() + int(g.others.size()));
+        QVERIFY(menuAction(titles, QStringLiteral("Title 7, ")) && menuAction(titles, QStringLiteral("Title 7, "))->text().endsWith(QLatin1String("(main feature)")));
+        QVERIFY(menuAction(titles, QStringLiteral("Title 9, ")) && menuAction(titles, QStringLiteral("Title 9, "))->text().endsWith(QLatin1String("(part 3 of the main feature)")));
+        // Play main feature asks for the whole film: one title, as long as all four.
+        w.disc()->playMain();
+        QTRY_VERIFY_WITH_TIMEOUT(w.disc()->inTitle() && w.disc()->ttn() == g.feature.title, 10000);
+        QVERIFY(qAbs(w.disc()->titleDuration() - want.value("featureSec").toDouble()) < 1);
+        QCOMPARE(int(w.disc()->chapters().size()), g.feature.chapters);
+        w.close();
+    }
+    want = synthDisc("WITTY_TEST_SYNTH_DVD", QStringLiteral("playall"), &path);
+    QVERIFY(!want.isEmpty());
+    {
+        // A TV disc whose episodes are only inside its play-all title.
+        MainWindow w(true);
+        holdTheDisc(w);
+        w.show();
+        w.openPath(path);
+        QTRY_VERIFY_WITH_TIMEOUT(w.disc()->active(), 15000);
+        auto *episodes = w.findChild<QMenu *>(QStringLiteral("menuEpisodes"));
+        QVERIFY(episodes->menuAction()->isVisible());
+        const QJsonArray starts = want.value("episodeStartsSec").toArray();
+        const QStringList texts = menuTexts(episodes);
+        QCOMPARE(int(texts.size()), int(starts.size()) + 1);
+        QVERIFY2(texts[0].startsWith(QLatin1String("Play all, ")), qPrintable(texts[0]));
+        QVERIFY2(texts[3].startsWith(QLatin1String("Episode 3, ")), qPrintable(texts[3]));
+        menuAction(episodes, QStringLiteral("Episode 3, "))->trigger();
+        QTRY_VERIFY_WITH_TIMEOUT(w.disc()->inTitle() && qAbs(w.disc()->titleStart() - starts[2].toDouble()) < 1, 10000);
+        QCOMPARE(w.disc()->ttn(), want.value("playAll").toInt());
+        w.close();
+    }
+    want = synthDisc("WITTY_TEST_SYNTH_DVD", QStringLiteral("cuts"), &path);
+    QVERIFY(!want.isEmpty());
+    {
+        // Another cut of the film is a version.
+        MainWindow w(true);
+        holdTheDisc(w);
+        w.show();
+        w.openPath(path);
+        QTRY_VERIFY_WITH_TIMEOUT(w.disc()->active(), 15000);
+        auto *versions = w.findChild<QMenu *>(QStringLiteral("menuVersions"));
+        QVERIFY(versions->menuAction()->isVisible());
+        QCOMPARE(versions->title(), QStringLiteral("Versions"));
+        QCOMPARE(int(menuTexts(versions).size()), 1);
+        const DiscChoice cut = w.disc()->guide().versions.value(0);
+        versions->actions().first()->trigger();
+        QTRY_VERIFY_WITH_TIMEOUT(w.disc()->inTitle() && w.disc()->ttn() == cut.title, 10000);
+        QVERIFY(cut.title != want.value("main").toInt());
+        w.close();
+    }
+}
+
+void Tests::syntheticBluraysOfferTheirChoices()
+{
+    QString path;
+    QJsonObject want = synthDisc("WITTY_TEST_SYNTH_BD", QStringLiteral("editions.iso"), &path);
+    if (want.isEmpty() || !QFile::exists(EngineClient::enginePath()))
+        QSKIP("WITTY_TEST_SYNTH_BD doesn't name WittyBluray's exported synthetic discs");
+    {
+        // A film with two cuts among four hundred decoy playlists.
+        MainWindow w(true);
+        holdTheDisc(w);
+        w.show();
+        w.openPath(path);
+        QTRY_VERIFY_WITH_TIMEOUT(w.disc()->active(), 15000);
+        const DiscGuide &g = w.disc()->guide();
+        QVERIFY(g.present && g.feature.valid());
+        QCOMPARE(g.feature.title, want.value("main").toInt());
+        QCOMPARE(g.decoys, want.value("decoys").toInt());
+        auto *versions = w.findChild<QMenu *>(QStringLiteral("menuVersions"));
+        auto *titles = w.findChild<QMenu *>(QStringLiteral("menuTitles"));
+        auto *whyAct = w.findChild<QAction *>(QStringLiteral("actWhy"));
+        QCOMPARE(whyAct->text(), QStringLiteral("Why this playlist…"));
+        QVERIFY(versions->menuAction()->isVisible());
+        QCOMPARE(versions->title(), QStringLiteral("Editions"));
+        const QJsonArray editions = want.value("editions").toArray();
+        const QStringList texts = menuTexts(versions);
+        QCOMPARE(int(texts.size()), int(editions.size()));
+        QVERIFY2(texts.first().startsWith(QLatin1String("Longest cut, ")), qPrintable(texts.first()));
+        QVERIFY2(texts.last().endsWith(QLatin1String("(main feature)")), qPrintable(texts.last()));
+        // Four hundred decoys don't make a menu of four hundred: the rest are counted.
+        auto *more = titles->findChild<QMenu *>(QStringLiteral("menuMoreTitles"));
+        QVERIFY(more);
+        QCOMPARE(int(more->actions().size()), DiscGuide::kMaxChoices + 1);
+        QVERIFY(!more->actions().last()->isEnabled());
+        QVERIFY(menuTexts(titles).size() <= 4);
+        // The longer cut plays as its own playlist, as a title with chapters.
+        versions->actions().first()->trigger();
+        QTRY_VERIFY_WITH_TIMEOUT(w.disc()->inTitle() && w.disc()->ttn() == editions[0].toInt(), 10000);
+        QVERIFY(w.disc()->titleDuration() > g.feature.duration);
+        QVERIFY(!w.disc()->chapters().isEmpty());
+        // And Play main feature goes back to the one picked.
+        w.disc()->playMain();
+        QTRY_VERIFY_WITH_TIMEOUT(w.disc()->inTitle() && w.disc()->ttn() == g.feature.title, 10000);
+        w.close();
+    }
+    want = synthDisc("WITTY_TEST_SYNTH_BD", QStringLiteral("tv"), &path);
+    QVERIFY(!want.isEmpty());
+    {
+        // A TV disc: episodes in viewing order, each its own playlist, and play all.
+        MainWindow w(true);
+        holdTheDisc(w);
+        w.show();
+        w.openPath(path);
+        QTRY_VERIFY_WITH_TIMEOUT(w.disc()->active(), 15000);
+        auto *episodes = w.findChild<QMenu *>(QStringLiteral("menuEpisodes"));
+        QVERIFY(episodes->menuAction()->isVisible());
+        const QJsonArray eps = want.value("episodes").toArray();
+        QCOMPARE(int(menuTexts(episodes).size()), int(eps.size()) + 1);
+        menuAction(episodes, QStringLiteral("Episode 2, "))->trigger();
+        QTRY_VERIFY_WITH_TIMEOUT(w.disc()->inTitle() && w.disc()->ttn() == eps[1].toInt(), 10000);
+        menuAction(episodes, QStringLiteral("Play all, "))->trigger();
+        QTRY_VERIFY_WITH_TIMEOUT(w.disc()->inTitle() && w.disc()->ttn() == want.value("playAll").toInt(), 10000);
+        w.close();
+    }
+    want = synthDisc("WITTY_TEST_SYNTH_BD", QStringLiteral("playall"), &path);
+    QVERIFY(!want.isEmpty());
+    {
+        // Only a play-all playlist: its parts start inside it.
+        MainWindow w(true);
+        holdTheDisc(w);
+        w.show();
+        w.openPath(path);
+        QTRY_VERIFY_WITH_TIMEOUT(w.disc()->active(), 15000);
+        auto *episodes = w.findChild<QMenu *>(QStringLiteral("menuEpisodes"));
+        const QJsonArray starts = want.value("playAllStartsSec").toArray();
+        QCOMPARE(int(menuTexts(episodes).size()), int(starts.size()));
+        menuAction(episodes, QStringLiteral("Part 3, "))->trigger();
+        QTRY_VERIFY_WITH_TIMEOUT(w.disc()->inTitle() && qAbs(w.disc()->titleStart() - starts[2].toDouble()) < 2, 10000);
+        QCOMPARE(w.disc()->ttn(), want.value("main").toInt());
+        w.close();
+    }
 }
 
 void Tests::realDvdMenusAndPlayback()

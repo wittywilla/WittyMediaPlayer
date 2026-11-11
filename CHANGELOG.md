@@ -8,6 +8,16 @@ What changed in WittyMediaPlayer, newest first. What changed before it had a rep
 Version 0.1.3. Version 0.1.2 was tagged but never published, because its build failed on GitHub, so everything below
 arrives with 0.1.3.
 
+- **The film on a disc that hides it.** The player now uses the disc engines' ranking of a disc's titles in full. **Disc,
+  Play main feature** plays the film whole: a film the disc cuts into several titles plays as one, with one seek bar, and
+  one its commands put together plays in their order. **Disc, Why this title** says why that title was picked and how sure
+  the pick is, with the engine's warnings, where the disc's index was mended and what couldn't be read. A film's other cuts
+  are under **Versions** (DVD) or **Editions** (Blu-ray), a TV disc's episodes under **Episodes**, and decoy titles move out
+  of the way, under **Titles, More titles**. Nothing is unlocked to work any of this out.
+- A Blu-ray playlist chosen from the Disc menu plays as a title, with chapters and a seek bar, even when none of the
+  disc's own titles names it. A Blu-ray whose own program plays nothing starts with the film instead of stopping.
+- This needs the disc modules that answer two new calls, `guide` and `choose`: `wittydvdplayer` and `wittyblurayplayer`
+  0.3.0, on WittyDVD and WittyBluray 0.4.0. A downloaded disc module from before them still plays discs, without the new menus.
 - The release build works on GitHub's Windows machines. Its compiler's `make` crashed there because those machines don't
   name a shell, and now the build names one ([#1](https://github.com/wittywilla/WittyMediaPlayer/issues/1)).
 - Buttons that can't be used, such as Play with nothing open, now look dimmed, and the control bar's icons are sharp on
