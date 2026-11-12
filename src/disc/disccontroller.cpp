@@ -69,6 +69,10 @@ void DiscController::start(const QJsonObject &reply)
     guide_ = DiscGuide::fromJson(reply.value(QStringLiteral("guide")).toObject());
     if (guide_.present && guide_.kind.isEmpty())
         guide_.kind = kind();
+    fingerprint_ = reply.value(QStringLiteral("fingerprint")).toString();
+    if (!DiscMemory::validFingerprint(fingerprint_))
+        fingerprint_.clear();
+    pick_ = {};
     titles_.clear();
     for (const auto &v : info_.value(QStringLiteral("titles")).toArray()) {
         const QJsonObject o = v.toObject();
@@ -98,6 +102,8 @@ void DiscController::close()
     chapters_.clear();
     title_ = menu_ = media_ = {};
     guide_ = {};
+    fingerprint_.clear();
+    pick_ = {};
     art_.clear();
     external_.clear();
     view_->setOverlays({});
@@ -815,8 +821,30 @@ void DiscController::choose(const QString &id)
     });
 }
 
+bool DiscController::pickUsable() const
+{
+    if (!pick_.valid())
+        return false;
+    if (!pick_.id.isEmpty() && guide_.present) {
+        const DiscChoice c = guide_.find(pick_.id);
+        if (c.valid())
+            return c.title == pick_.title;
+    }
+    for (const DiscTitle &t : titles_)
+        if (t.n == pick_.title)
+            return true;
+    return false;
+}
+
 void DiscController::playMain()
 {
+    if (pickUsable()) {
+        if (!pick_.id.isEmpty() && guide_.find(pick_.id).valid())
+            choose(pick_.id);
+        else
+            playTitle(pick_.title, 0);
+        return;
+    }
     if (guide_.present && guide_.feature.valid())
         choose(guide_.feature.id);
     else

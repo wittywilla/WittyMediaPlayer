@@ -389,12 +389,20 @@ void MainWindow::buildMenus()
     bar_->subtitleButton()->setMenu(menuSubs_);
 
     menuDisc_ = menuBar()->addMenu(QStringLiteral("&Disc"));
+    menuDisc_->setObjectName(QStringLiteral("menuDisc"));
     menuDisc_->addAction(QStringLiteral("Disc menu\tM"), disc_, &DiscController::rootMenu);
     menuDisc_->addAction(QStringLiteral("Title menu\tT"), disc_, &DiscController::titleMenu);
     menuDisc_->addAction(QStringLiteral("Resume"), disc_, &DiscController::resume);
     actMain_ = menuDisc_->addAction(QStringLiteral("Play main feature"), disc_, &DiscController::playMain);
     actWhy_ = menuDisc_->addAction(QStringLiteral("Why this title…"), this, &MainWindow::showWhy);
     actWhy_->setObjectName(QStringLiteral("actWhy"));
+    // The viewer's own film for a disc, when the engine picked another: kept on this
+    // computer by the disc's fingerprint, and undone here.
+    actMakeMain_ = menuDisc_->addAction(QStringLiteral("Play this as the main feature from now on"), this, &MainWindow::makeThisTheFeature);
+    actMakeMain_->setObjectName(QStringLiteral("actMakeMain"));
+    actForgetMain_ = menuDisc_->addAction(QStringLiteral("Forget your main feature for this disc"), this, &MainWindow::forgetChosenFeature);
+    actForgetMain_->setObjectName(QStringLiteral("actForgetMain"));
+    connect(menuDisc_, &QMenu::aboutToShow, this, &MainWindow::updateFeatureActions);
     menuDisc_->addAction(QStringLiteral("Skip this clip"), disc_, &DiscController::skip);
     menuTitles_ = menuDisc_->addMenu(QStringLiteral("Titles"));
     menuTitles_->setObjectName(QStringLiteral("menuTitles"));
@@ -713,6 +721,9 @@ void MainWindow::rebuildDiscMenus()
     actMain_->setToolTip(guided ? guide.why : QString());
     actWhy_->setText(guided && guide.kind == QLatin1String("bluray") ? QStringLiteral("Why this playlist…") : QStringLiteral("Why this title…"));
     actWhy_->setVisible(guided);
+    if (on && disc_->pickUsable())
+        actMain_->setText(QStringLiteral("Play main feature (your choice: %1)").arg(QString(disc_->pick().label).replace(QLatin1Char('&'), QStringLiteral("&&"))));
+    updateFeatureActions();
     menuVersions_->setTitle(guided ? guide.versionsName() : QStringLiteral("Versions"));
     menuVersions_->menuAction()->setVisible(guided && !guide.versions.isEmpty());
     menuEpisodes_->menuAction()->setVisible(guided && !guide.episodes.isEmpty());
@@ -757,8 +768,18 @@ void MainWindow::rebuildDiscMenus()
             const QString id = c.id;
             connect(a, &QAction::triggered, this, [this, id] { disc_->choose(id); });
         };
-        for (const DiscChoice &c : guide.versions)
-            addChoice(menuVersions_, c);
+        // A version chosen is the film the viewer wants on this disc: Play main feature
+        // plays it from now on, until they choose the engine's pick again or forget it.
+        for (const DiscChoice &c : guide.versions) {
+            QAction *a = menuVersions_->addAction(c.menuText());
+            connect(a, &QAction::triggered, this, [this, c] {
+                disc_->choose(c.id);
+                if (c.main)
+                    forgetChosenFeature();
+                else
+                    rememberFeature({c.id, c.title, c.label});
+            });
+        }
         if (guide.playAll.valid() && !guide.episodes.isEmpty()) {
             addChoice(menuEpisodes_, guide.playAll);
             menuEpisodes_->addSeparator();
@@ -782,6 +803,61 @@ void MainWindow::rebuildDiscMenus()
         angleGroup->addAction(a);
         connect(a, &QAction::triggered, this, [this, i] { disc_->switchAngle(i); });
     }
+}
+
+void MainWindow::updateFeatureActions()
+{
+    const bool on = disc_->active();
+    actForgetMain_->setVisible(on && disc_->pick().valid());
+    actForgetMain_->setEnabled(!disc_->fingerprint().isEmpty());
+    // Offered while a title plays that isn't the film as Play main feature has it.
+    bool offer = on && !disc_->fingerprint().isEmpty() && disc_->inTitle();
+    if (offer) {
+        const int ttn = disc_->ttn();
+        const DiscGuide &guide = disc_->guide();
+        if (disc_->pickUsable())
+            offer = ttn != disc_->pick().title;
+        else
+            offer = guide.present && guide.feature.valid() ? guide.feature.title != ttn && !guide.feature.titles.contains(ttn) : ttn != disc_->mainTitle();
+    }
+    actMakeMain_->setVisible(offer);
+    if (offer)
+        actMakeMain_->setText(QStringLiteral("Play %1 %2 as the main feature from now on").arg(disc_->guide().unit()).arg(disc_->ttn()));
+}
+
+void MainWindow::rememberFeature(const DiscPick &pick)
+{
+    if (disc_->fingerprint().isEmpty() || !pick.valid())
+        return;
+    DiscMemory::save(settings_, disc_->fingerprint(), pick);
+    disc_->setPick(pick);
+    rebuildDiscMenus();
+    setStatus(QStringLiteral("Play main feature now plays %1 on this disc. Disc, Forget your main feature undoes it.").arg(pick.label));
+}
+
+void MainWindow::makeThisTheFeature()
+{
+    if (!disc_->active() || !disc_->inTitle())
+        return;
+    const int ttn = disc_->ttn();
+    const DiscGuide &guide = disc_->guide();
+    // The guide's own entry for the title, so it plays as the guide has it.
+    DiscChoice c = guide.find(QStringLiteral("title:%1").arg(ttn));
+    if (!c.valid() || c.title != ttn)
+        c = {};
+    const QString unit = guide.present ? guide.unit() : QStringLiteral("title");
+    QString label = c.valid() ? c.label : QStringLiteral("%1 %2").arg(unit.left(1).toUpper() + unit.mid(1)).arg(ttn);
+    rememberFeature({c.id, ttn, label});
+}
+
+void MainWindow::forgetChosenFeature()
+{
+    if (!disc_->pick().valid())
+        return;
+    DiscMemory::forget(settings_, disc_->fingerprint());
+    disc_->setPick({});
+    rebuildDiscMenus();
+    setStatus(QStringLiteral("Play main feature plays the disc engine's pick again."));
 }
 
 void MainWindow::showWhy()
@@ -913,15 +989,19 @@ void MainWindow::openPath(const QString &path)
             isFile_ = false;
             bar_->setDiscMode(true);
             disc_->start(o);
+            disc_->setPick(DiscMemory::load(settings_, disc_->fingerprint()));
+            rebuildDiscMenus();
             setWindowTitle(QStringLiteral("%1 - WittyMediaPlayer").arg(disc_->label().isEmpty() ? QFileInfo(path).fileName() : disc_->label()));
             const QStringList notes = disc_->notes();
             const DiscGuide &guide = disc_->guide();
             if (!notes.isEmpty())
                 setStatus(notes.first());
+            else if (disc_->pickUsable())
+                setStatus(QStringLiteral("Play main feature plays your choice for this disc, %1.").arg(disc_->pick().label));
             else if (const QString pick = guide.summary(); !pick.isEmpty())
                 setStatus(status_.isEmpty() ? pick : status_ + QLatin1Char(' ') + pick);
             // A pick the engine isn't sure of is worth a moment over the picture.
-            if (guide.present && guide.feature.valid() && guide.level == QLatin1String("low"))
+            if (guide.present && guide.feature.valid() && guide.level == QLatin1String("low") && !disc_->pickUsable())
                 showNotice(QStringLiteral("Not sure which %1 is the film. See Disc, Why this %1").arg(guide.unit()));
         }
         bar_->setPlaying(true);

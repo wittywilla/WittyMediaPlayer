@@ -10,6 +10,8 @@
 #include <QVector>
 #include <memory>
 
+#include "../disc/discmemory.h"
+
 class QAbstractButton;
 class QAction;
 class QFrame;
@@ -81,6 +83,10 @@ private:
     void rebuildTrackMenus();
     void rebuildDiscMenus();
     void showWhy();
+    void updateFeatureActions();
+    void rememberFeature(const DiscPick &pick);
+    void makeThisTheFeature();
+    void forgetChosenFeature();
     void rebuildRecent();
     void rememberRecent(const QString &path);
     void updateHitButtons();
@@ -125,7 +131,7 @@ private:
     QLabel *engineCredit_ = nullptr;
     QVector<QAbstractButton *> hits_;
     QMenu *menuAudio_ = nullptr, *menuSubs_ = nullptr, *menuDisc_ = nullptr, *menuTitles_ = nullptr, *menuChapters_ = nullptr, *menuAngles_ = nullptr, *menuVersions_ = nullptr, *menuEpisodes_ = nullptr, *menuRecent_ = nullptr, *menuDrives_ = nullptr;
-    QAction *actStop_ = nullptr, *actMain_ = nullptr, *actWhy_ = nullptr, *actImage_ = nullptr, *actLocks_ = nullptr, *actForced_ = nullptr, *actFull_ = nullptr;
+    QAction *actStop_ = nullptr, *actMain_ = nullptr, *actWhy_ = nullptr, *actMakeMain_ = nullptr, *actForgetMain_ = nullptr, *actImage_ = nullptr, *actLocks_ = nullptr, *actForced_ = nullptr, *actFull_ = nullptr;
     QTimer tick_, hideControls_, driveWatch_, noticeTimer_;
     QSettings settings_;
     QString currentPath_;

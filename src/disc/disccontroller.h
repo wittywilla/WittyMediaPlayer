@@ -7,6 +7,7 @@
 
 #include "../engine/engineclient.h"
 #include "discguide.h"
+#include "discmemory.h"
 #include "../media/player.h"
 #include "../video/videoview.h"
 
@@ -68,6 +69,14 @@ public:
     // The disc engine's guide to this disc: the film it picked and why, and the
     // versions, episodes and other titles there are to choose.
     const DiscGuide &guide() const { return guide_; }
+    // The helper's name for this disc, to remember the viewer's choices by; empty from an
+    // older helper.
+    QString fingerprint() const { return fingerprint_; }
+    // The film the viewer chose for this disc instead of the engine's pick, if any.
+    const DiscPick &pick() const { return pick_; }
+    void setPick(const DiscPick &pick) { pick_ = pick; }
+    // Whether the viewer's choice is still on this disc, so Play main feature plays it.
+    bool pickUsable() const;
 
     QString presentationKind() const { return kind_; }
     bool inTitle() const { return kind_ == QLatin1String("title"); }
@@ -120,8 +129,9 @@ public:
     void switchAngle(int n);
     // Plays one of the guide's choices: the feature, a version, an episode, another title.
     void choose(const QString &id);
-    // Plays the disc's main feature, whatever the menus are doing: whole and in the
-    // disc's order when the engine's guide says how, else the main title by its number.
+    // Plays the disc's main feature, whatever the menus are doing: the viewer's own
+    // choice for this disc when there is one, else the engine's pick, whole and in the
+    // disc's order when its guide says how, else the main title by its number.
     void playMain();
     // Asks the engine for its guide again, for the counts that change as a disc is read.
     void refreshGuide(std::function<void()> done);
@@ -156,6 +166,8 @@ private:
     bool active_ = false;
     QJsonObject info_;
     DiscGuide guide_;
+    QString fingerprint_;
+    DiscPick pick_;
     QVector<DiscTitle> titles_;
 
     QString kind_;

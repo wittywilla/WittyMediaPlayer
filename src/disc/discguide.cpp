@@ -131,6 +131,21 @@ bool DiscGuide::lists(int title) const
     return false;
 }
 
+DiscChoice DiscGuide::find(const QString &id) const
+{
+    if (id.isEmpty())
+        return {};
+    if (feature.id == id)
+        return feature;
+    if (playAll.id == id)
+        return playAll;
+    for (const auto *list : {&versions, &episodes, &others})
+        for (const DiscChoice &c : *list)
+            if (c.id == id)
+                return c;
+    return {};
+}
+
 QString DiscGuide::detailFor(int title) const
 {
     if (feature.valid() && feature.titles.size() > 1 && feature.titles.contains(title))
@@ -151,7 +166,7 @@ QString DiscGuide::summary() const
     else if (level == QLatin1String("medium"))
         s += QStringLiteral(" The disc engine is fairly sure of it.");
     else
-        s += QStringLiteral(" The disc engine isn't sure of it: see Disc, Why this title.");
+        s += QStringLiteral(" The disc engine isn't sure of it: see Disc, Why this %1.").arg(unit());
     return s;
 }
 
@@ -196,7 +211,7 @@ QString DiscGuide::whyText() const
             facts << QStringLiteral("  and %1 more.").arg(repairCount - shown);
     }
     if (paddedSectors > 0)
-        facts << QStringLiteral("%1 of the disc's index couldn't be read and %2 taken as empty.").arg(counted(paddedSectors, QStringLiteral("sector"), QStringLiteral("sectors")), paddedSectors == 1 ? QStringLiteral("was") : QStringLiteral("were"));
+        facts << QStringLiteral("So far %1 of the disc couldn't be read and %2 taken as empty.").arg(counted(paddedSectors, QStringLiteral("sector"), QStringLiteral("sectors")), paddedSectors == 1 ? QStringLiteral("was") : QStringLiteral("were"));
     if (!facts.isEmpty())
         out << QString() << facts;
     out << QString() << QStringLiteral("This comes from reading the disc's index, never from unlocking anything: a copy-protected disc is refused.");

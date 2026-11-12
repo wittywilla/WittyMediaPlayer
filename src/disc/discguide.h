@@ -59,6 +59,8 @@ struct DiscGuide {
     // Whether a title or playlist is one the guide lists by itself, not a decoy or one
     // past its limits.
     bool lists(int title) const;
+    // The choice with this id, or an invalid one.
+    DiscChoice find(const QString &id) const;
     // What the guide says about a title, for the Titles menu: "trailer", "episode".
     QString detailFor(int title) const;
     // One line: the pick, its length and how sure. Read out when a disc opens.

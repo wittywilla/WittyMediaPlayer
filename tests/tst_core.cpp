@@ -223,6 +223,7 @@ private slots:
 
     void discGuideReads();
     void discGuideDoubtsWhatIsOdd();
+    void discMemoryKeepsTheViewersFilm();
     void syntheticDvdsOfferTheirChoices();
     void syntheticBluraysOfferTheirChoices();
 
@@ -1001,7 +1002,7 @@ void Tests::discGuideReads()
     const QString why = g.whyText();
     for (const char *part : {"Title 7 is the main feature because the disc starts it by itself.", "How sure: high (99%).", "Length: 2:00:00, 30 chapters.",
                              "4 titles (7, 3, 9, 2). They play here as one film", "This disc has 9 decoy titles.", "9 decoy titles are left out of the menus",
-                             "disagreed in 3 places", "the cell table was mended", "and 2 more.", "2 sectors of the disc's index couldn't be read and were taken as empty", "never from unlocking anything"})
+                             "disagreed in 3 places", "the cell table was mended", "and 2 more.", "So far 2 sectors of the disc couldn't be read and were taken as empty", "never from unlocking anything"})
         QVERIFY2(why.contains(QLatin1String(part)), part);
 
     // A Blu-ray's words.
@@ -1079,6 +1080,36 @@ static QJsonObject synthDisc(const char *env, const QString &name, QString *path
 static void holdTheDisc(MainWindow &w)
 {
     QObject::disconnect(w.player(), &Player::ended, w.disc(), nullptr);
+}
+
+// The film a viewer chose for a disc is kept by the disc's fingerprint, and only that.
+void Tests::discMemoryKeepsTheViewersFilm()
+{
+    QSettings s(dir_.filePath(QStringLiteral("memory.ini")), QSettings::IniFormat);
+    const QString fp = QStringLiteral("0123456789abcdef0123456789abcdef");
+    QVERIFY(!DiscMemory::load(s, fp).valid());
+    DiscMemory::save(s, fp, {QStringLiteral("cut:3"), 3, QStringLiteral("Title 3")});
+    DiscPick p = DiscMemory::load(s, fp);
+    QCOMPARE(p.id, QStringLiteral("cut:3"));
+    QCOMPARE(p.title, 3);
+    QCOMPARE(p.label, QStringLiteral("Title 3"));
+    // A name that isn't a fingerprint is never a settings key.
+    for (const QString &bad : {QString(), QStringLiteral("../x"), QStringLiteral("0123456789ABCDEF0123456789ABCDEF"), fp + QLatin1Char('0')}) {
+        QVERIFY(!DiscMemory::validFingerprint(bad));
+        DiscMemory::save(s, bad, p);
+        QVERIFY(!DiscMemory::load(s, bad).valid());
+    }
+    s.beginGroup(QStringLiteral("discFilm"));
+    QCOMPARE(s.childGroups(), QStringList{fp});
+    s.endGroup();
+    DiscMemory::forget(s, fp);
+    QVERIFY(!DiscMemory::load(s, fp).valid());
+    // A library of discs keeps the newest choices.
+    for (int i = 0; i <= DiscMemory::kMaxDiscs; i++)
+        DiscMemory::save(s, QStringLiteral("%1").arg(i, 32, 16, QLatin1Char('0')), {QString(), 1, QStringLiteral("Title 1")});
+    s.beginGroup(QStringLiteral("discFilm"));
+    QCOMPARE(int(s.childGroups().size()), DiscMemory::kMaxDiscs);
+    s.endGroup();
 }
 
 void Tests::syntheticDvdsOfferTheirChoices()
@@ -1160,9 +1191,43 @@ void Tests::syntheticDvdsOfferTheirChoices()
         QCOMPARE(versions->title(), QStringLiteral("Versions"));
         QCOMPARE(int(menuTexts(versions).size()), 1);
         const DiscChoice cut = w.disc()->guide().versions.value(0);
+        QVERIFY(!w.disc()->fingerprint().isEmpty());
         versions->actions().first()->trigger();
         QTRY_VERIFY_WITH_TIMEOUT(w.disc()->inTitle() && w.disc()->ttn() == cut.title, 10000);
         QVERIFY(cut.title != want.value("main").toInt());
+        // Choosing it made it this disc's film.
+        QCOMPARE(w.disc()->pick().title, cut.title);
+        QVERIFY(w.disc()->pickUsable());
+        w.close();
+    }
+    {
+        // Opened again, Play main feature plays the cut chosen, until it is forgotten.
+        MainWindow w(true);
+        holdTheDisc(w);
+        w.show();
+        w.openPath(path);
+        QTRY_VERIFY_WITH_TIMEOUT(w.disc()->active(), 15000);
+        const DiscChoice cut = w.disc()->guide().versions.value(0);
+        QCOMPARE(w.disc()->pick().title, cut.title);
+        auto *forget = w.findChild<QAction *>(QStringLiteral("actForgetMain"));
+        QVERIFY(forget && forget->isVisible());
+        QVERIFY2(w.statusText().contains(QLatin1String("your choice")), qPrintable(w.statusText()));
+        w.disc()->playMain();
+        QTRY_VERIFY_WITH_TIMEOUT(w.disc()->inTitle() && w.disc()->ttn() == cut.title, 10000);
+        forget->trigger();
+        QVERIFY(!w.disc()->pick().valid() && !forget->isVisible());
+        w.disc()->playMain();
+        QTRY_VERIFY_WITH_TIMEOUT(w.disc()->inTitle() && w.disc()->ttn() == want.value("main").toInt(), 10000);
+        // Any title playing can be made the film by hand.
+        auto *make = w.findChild<QAction *>(QStringLiteral("actMakeMain"));
+        w.disc()->playTitle(cut.title, 0);
+        QTRY_VERIFY_WITH_TIMEOUT(w.disc()->inTitle() && w.disc()->ttn() == cut.title, 10000);
+        emit w.findChild<QMenu *>(QStringLiteral("menuDisc"))->aboutToShow();
+        QVERIFY(make && make->isVisible());
+        make->trigger();
+        QCOMPARE(w.disc()->pick().title, cut.title);
+        QVERIFY(!make->isVisible());
+        forget->trigger();
         w.close();
     }
 }
@@ -1206,7 +1271,16 @@ void Tests::syntheticBluraysOfferTheirChoices()
         QTRY_VERIFY_WITH_TIMEOUT(w.disc()->inTitle() && w.disc()->ttn() == editions[0].toInt(), 10000);
         QVERIFY(w.disc()->titleDuration() > g.feature.duration);
         QVERIFY(!w.disc()->chapters().isEmpty());
-        // And Play main feature goes back to the one picked.
+        // Chosen, it is this disc's film: Play main feature plays it.
+        QCOMPARE(w.disc()->pick().title, editions[0].toInt());
+        w.disc()->playMain();
+        QTRY_VERIFY_WITH_TIMEOUT(w.disc()->inTitle() && w.disc()->ttn() == editions[0].toInt(), 10000);
+        // Choosing the engine's own pick again forgets it, and Play main feature goes back.
+        versions->actions().last()->trigger();
+        QTRY_VERIFY_WITH_TIMEOUT(w.disc()->inTitle() && w.disc()->ttn() == g.feature.title, 10000);
+        QVERIFY(!w.disc()->pick().valid());
+        w.disc()->playTitle(editions[0].toInt(), 0);
+        QTRY_VERIFY_WITH_TIMEOUT(w.disc()->inTitle() && w.disc()->ttn() == editions[0].toInt(), 10000);
         w.disc()->playMain();
         QTRY_VERIFY_WITH_TIMEOUT(w.disc()->inTitle() && w.disc()->ttn() == g.feature.title, 10000);
         w.close();
