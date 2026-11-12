@@ -12,6 +12,9 @@
 #include <QString>
 #include <QVector>
 
+#include "../ui/theme.h"
+#include <memory>
+
 class QBoxLayout;
 class QFrame;
 class QLabel;
@@ -48,6 +51,8 @@ public:
     // The ids of everything that takes focus, in focus order.
     QStringList focusOrder() const;
 
+    // Draws in this theme instead of the application's (the CD screen's classic look); null goes back.
+    void setForcedTheme(const Theme *theme);
     // Moves focus to a node by id. False when there is none.
     bool focusNode(const QString &id);
     void setVerticalScroll(int value);
@@ -76,6 +81,7 @@ private:
     QVector<SduiBuilt> built_;
     QVector<QWidget *> focusables_;
     QJsonObject layout_;
+    std::unique_ptr<Theme> forced_;
 };
 
 } // namespace wmp

@@ -599,6 +599,15 @@ void CdPage::paintEvent(QPaintEvent *)
 
 void CdPage::applyLook()
 {
+    // The panel of tracks follows: the classic look is dark blue whatever the theme.
+    if (panel_) {
+        if (classic_) {
+            const Theme dark = Themes::load(QStringLiteral("midnight"));
+            panel_->setForcedTheme(&dark);
+        } else {
+            panel_->setForcedTheme(nullptr);
+        }
+    }
     const Theme &t = Themes::current();
     if (classic_) {
         setStyleSheet(QStringLiteral(R"(

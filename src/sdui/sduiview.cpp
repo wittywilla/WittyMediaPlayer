@@ -211,7 +211,8 @@ void SduiView::paintEvent(QPaintEvent *)
     QStyleOption opt;
     opt.initFrom(this);
     style()->drawPrimitive(QStyle::PE_Widget, &opt, &p, this);
-    Themes::paintScene(&p, Themes::current(), rect());
+    if (!forced_)
+        Themes::paintScene(&p, Themes::current(), rect());
 }
 
 void SduiView::changeEvent(QEvent *e)
@@ -221,9 +222,16 @@ void SduiView::changeEvent(QEvent *e)
         applyStyle();
 }
 
+void SduiView::setForcedTheme(const Theme *theme)
+{
+    forced_ = theme ? std::make_unique<Theme>(*theme) : nullptr;
+    applyStyle();
+    update();
+}
+
 void SduiView::applyStyle()
 {
-    const Theme &t = Themes::current();
+    const Theme &t = forced_ ? *forced_ : Themes::current();
     const auto h = [](const QColor &c) { return c.name(QColor::HexRgb); };
     const QString sheet = QStringLiteral(R"(
 QWidget#sduiView, QWidget#sduiContent, QScrollArea { background: transparent; }
@@ -251,12 +259,14 @@ QPushButton[dimmed="true"] { background: transparent; color: %10; border: 1px da
 QPushButton[tone="danger"] { background: %8; color: %11; border-color: %8; }
 QPushButton[variant="primary"] { background: %5; color: %12; border-color: %5; font-weight: 600; }
 QPushButton[variant="primary"]:disabled { background: %3; color: %10; border-color: %2; }
+QLabel { color: %14; background: transparent; }
+QCheckBox { color: %14; }
 QLabel[sduiRole="caption"] { color: %13; }
 QLabel[sduiRole="muted"] { color: %13; }
 )")
                       .arg(h(t.bg2), h(t.bg4), h(t.bg3), h(t.focus), h(t.accent), h(t.ok), h(t.warn), h(t.danger))
                       .arg(t.radius)
-                      .arg(h(t.fg3), h(t.bg), h(t.accentFg), h(t.fg2)) + Themes::finishSheet(t);
+                      .arg(h(t.fg3), h(t.bg), h(t.accentFg), h(t.fg2), h(t.fg)) + Themes::finishSheet(t);
     if (sheet != styleSheet()) // a style sheet change must not come back here as a palette change
         setStyleSheet(sheet);
 }
