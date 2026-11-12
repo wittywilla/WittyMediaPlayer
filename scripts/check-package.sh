@@ -59,7 +59,7 @@ else
 fi
 
 # The licences have to go with it.
-for f in LICENSE NOTICE README.md licenses/THIRD-PARTY.txt licenses/LGPL-3.0.txt licenses/GPL-3.0.txt; do
+for f in LICENSE NOTICE README.md licenses/THIRD-PARTY.txt licenses/LGPL-3.0.txt licenses/GPL-3.0.txt licenses/AGPL-3.0.txt; do
   [ -s "$PKG/$f" ] || say "$f is missing"
 done
 

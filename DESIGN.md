@@ -81,7 +81,15 @@ list, and treats the guide as something a downloaded module wrote, which may be 
 guide refuses the call, and the disc plays as it always did, with no chooser. The two calls live in the modules
 (`guide.go` in `wittydvdplayer` and `wittyblurayplayer`), so they update with them. The shape is the same for both kinds
 of disc, written out once in each module because WittyDisc's `session` contract doesn't hold it yet: moving it there is
-the tidy next step. WittyBluray's optional second opinion from a `libbluray` the viewer has installed is never asked for.
+the tidy next step. WittyBluray's optional second opinion from a `libbluray` the viewer has installed is never asked for, and the code
+that would load one isn't in the helper at all, on any system: a test checks.
+
+**The viewer's own pick** wins over the engine's. With the open disc the helper sends a fingerprint
+(`internal/disc/fingerprint.go`): a hash of the disc's kind and each title's number, length to the second and chapter
+count, as the module reports them. The label is left out (a folder's is its name, an image's the disc's), and so is the
+engine's pick, so a better engine doesn't forget what the viewer chose. The window keeps one choice per fingerprint in its
+settings (`DiscMemory`, at most 500 discs, oldest dropped) and plays it for **Play main feature** while the disc still has
+it; a choice the disc no longer offers is ignored, not guessed at.
 
 **Subtitles** are decoded in the stream as it plays, not by the helper reading the disc a second time. That
 matters on a real drive, where a second reader means constant seeking. Blu-ray text subtitles and subtitles in a

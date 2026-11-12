@@ -1,4 +1,5 @@
-WittyMediaPlayer is licensed under the Apache License 2.0 (see LICENSE and NOTICE).
+WittyMediaPlayer is licensed under the GNU General Public License v3.0 or later (see
+LICENSE and NOTICE).
 This folder holds the licences of what ships beside it.
 
 
@@ -201,11 +202,13 @@ Licensed under the MIT licence and BSD licences:
   OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
-WITTYDVD, WITTYBLURAY, WITTYDISC, WITTYMODULE
-Built into wittymediaplayer-engine.exe and wittymediaplayer-updater.exe. Newer versions of
-WittyDVD and WittyBluray can be installed from Settings, under the same licence.
-Developed by WittyWilla. Licensed under the Apache License 2.0.
-https://github.com/wittywilla
+WITTYCD, WITTYDVD, WITTYBLURAY, WITTYDISC, WITTYMODULE
+Built into wittymediaplayer-engine.exe and wittymediaplayer-updater.exe, with the player
+modules wittydvdplayer and wittyblurayplayer. Newer versions of those two can be installed
+from Settings, under the same licence.
+Copyright (C) 2026 WittyWilla and contributors. Licensed under the GNU Affero General
+Public License v3.0 or later (AGPL-3.0.txt).
+Source: https://github.com/wittywilla
 
 
 

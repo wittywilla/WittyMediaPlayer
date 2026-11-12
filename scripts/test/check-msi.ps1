@@ -123,7 +123,7 @@ if (-not $root) {
 } else {
   $dir = $root.Directory.FullName
   Write-Host "extracted to: $dir"
-  foreach ($f in "Uninstall WittyMediaPlayer.exe", "package-files.txt", "bin\wittymediaplayer-engine.exe", "bin\wittymediaplayer-updater.exe", "Qt6Core.dll", "avcodec-62.dll", "platforms\qwindows.dll", "LICENSE", "NOTICE", "README.md", "licenses\THIRD-PARTY.txt", "licenses\LGPL-3.0.txt", "licenses\GPL-3.0.txt") {
+  foreach ($f in "Uninstall WittyMediaPlayer.exe", "package-files.txt", "bin\wittymediaplayer-engine.exe", "bin\wittymediaplayer-updater.exe", "Qt6Core.dll", "avcodec-62.dll", "platforms\qwindows.dll", "LICENSE", "NOTICE", "README.md", "licenses\THIRD-PARTY.txt", "licenses\LGPL-3.0.txt", "licenses\GPL-3.0.txt", "licenses\AGPL-3.0.txt") {
     if (-not (Test-Path -LiteralPath (Join-Path $dir $f))) { Fail "$f is missing" }
   }
   $listed = Get-Content -LiteralPath (Join-Path $dir "package-files.txt") | Select-Object -Skip 1

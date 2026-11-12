@@ -11,7 +11,8 @@ A desktop player for video, audio, DVDs and Blu-rays on your own computer, with 
   [WittyMediaServer](https://github.com/wittywilla/WittyMediaServer).
 - **Finds the film on a disc that hides it:** some discs carry dozens of decoy titles, or cut the film into pieces.
   The disc engines work out which title is the film from the disc's index alone, and **Disc, Why this title** says how
-  they decided and how sure they are. A film's other cuts, and a TV disc's episodes, are in the **Disc** menu to choose from.
+  they decided and how sure they are. A film's other cuts, and a TV disc's episodes, are in the **Disc** menu to choose from,
+  and the cut you choose is the one **Play main feature** plays on that disc from then on.
 - **Plays from a disc drive directly,** as well as from `.iso` and `.img` images and `VIDEO_TS` or `BDMV` folders.
 - **Makes disc images:** copies a disc to one `.iso` or `.img` file to keep, play later, or add to a
   WittyMediaServer library.
@@ -196,10 +197,16 @@ disc's index:
 | In the Disc menu | What it does |
 |---|---|
 | **Play main feature** | Plays the film, and says which title that is and how long. A film the disc cuts into several titles plays as one, with one seek bar, in the disc's own order |
-| **Why this title…** | Says why that title was picked, how sure the pick is, what else was noticed (decoy titles, a film in several titles, places where the disc's index was mended) and how many sectors of the index couldn't be read |
+| **Why this title…** (**Why this playlist…** on a Blu-ray) | Says why that title was picked, how sure the pick is, what else was noticed (decoy titles, a film in several titles, places where the disc's index was mended) and how many sectors of the disc couldn't be read so far |
+| **Play title N as the main feature from now on** | Shown while a title plays that isn't the film. Makes it the one **Play main feature** plays on this disc |
+| **Forget your main feature for this disc** | Shown when you chose one. **Play main feature** goes back to the engine's pick |
 | **Titles** | The titles worth choosing, each with what it is. Decoys are one level down, under **More titles** |
-| **Versions** (DVD) or **Editions** (Blu-ray) | A film's other cuts, camera angles and the cuts a parental level chooses. Shown when the disc has some |
+| **Versions** (DVD) or **Editions** (Blu-ray) | A film's other cuts, camera angles and the cuts a parental level chooses. Shown when the disc has some. The one you choose becomes this disc's main feature |
 | **Episodes** | A TV disc's episodes in viewing order, with **Play all** first. Shown when the disc has some |
+
+Your main feature for a disc is kept in your settings, on this computer only, under a fingerprint of the disc: a
+number worked out from its titles' lengths and chapters, the same for the disc, its image and a copy in a folder. Nothing
+else about the disc is kept.
 
 None of this unlocks anything: it comes from the parts of a disc that are never scrambled, and a copy-protected disc is
 still refused. On a Blu-ray, the engine's optional comparison with a `libbluray` of your own is not used by the player

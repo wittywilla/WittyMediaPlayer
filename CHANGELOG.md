@@ -14,6 +14,14 @@ arrives with 0.1.3.
   the pick is, with the engine's warnings, where the disc's index was mended and what couldn't be read. A film's other cuts
   are under **Versions** (DVD) or **Editions** (Blu-ray), a TV disc's episodes under **Episodes**, and decoy titles move out
   of the way, under **Titles, More titles**. Nothing is unlocked to work any of this out.
+- **Your own pick for a disc.** Choose another cut under **Versions** or **Editions**, or **Play title N as the main
+  feature from now on** while a title plays, and **Play main feature** plays that on this disc from then on, until
+  **Forget your main feature for this disc**. It is kept in your settings by a fingerprint of the disc's titles, the same
+  for the disc, its image and a folder copy; nothing else about the disc is kept.
+- On a Blu-ray the status line points to **Disc, Why this playlist**, which is what the menu calls it there, and the
+  answer counts what couldn't be read of the whole disc so far, not only of its index.
+- The licences that ship now say the Witty disc libraries are under the GNU AGPL 3.0 or later, as they have been since
+  the relicence, and `licenses/AGPL-3.0.txt` goes with them. The package check and the installer check look for it.
 - A Blu-ray playlist chosen from the Disc menu plays as a title, with chapters and a seek bar, even when none of the
   disc's own titles names it. A Blu-ray whose own program plays nothing starts with the film instead of stopping.
 - This needs the disc modules that answer two new calls, `guide` and `choose`: `wittydvdplayer` and `wittyblurayplayer`
