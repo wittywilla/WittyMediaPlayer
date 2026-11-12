@@ -43,8 +43,8 @@ It doesn't do these yet:
 
 - Blu-ray menus written in Java don't run. The disc plays its titles instead, and the window says so.
 - Sound is stereo with the built-in playback. Surround tracks are mixed down.
-- Windows only for now, so there's no installer or uninstaller for macOS or Linux. Nothing in the design stops other
-  systems: see [DESIGN.md](DESIGN.md).
+- Windows, and an AppImage for Linux that hasn't been tried on Linux yet. No package for macOS. Nothing in the design
+  stops other systems: see [DESIGN.md](DESIGN.md).
 
 ## How to get it
 
@@ -135,7 +135,8 @@ It's built on Qt and FFmpeg, which come with it, and on WittyDVD, WittyBluray, W
 | System | Where it stands |
 |---|---|
 | Windows 10 and later, 64-bit | Built and run from a real Windows machine, with no disc drive attached. The installer has been checked under Wine in a throwaway container and has not been run on real Windows. No real disc has been played from a drive |
-| macOS, Linux, FreeBSD | No build, installer or uninstaller. [DESIGN.md](DESIGN.md) lists what a port needs. Images and folders are read by a helper written in Go, and audio CDs from a drive are written for Windows only |
+| Linux, 64-bit (x86_64, aarch64) | An AppImage, from `scripts/build-linux.sh`. Written and checked on a Mac only: the helpers build for Linux and the package check runs against a stand-in, but the AppImage itself has never been built or run. Plays files, images and folders; audio CDs from a drive are written for Windows only. Decoding is in software (no VA-API yet) |
+| macOS, FreeBSD | No package. The window and its tests build and run on a Mac for development. [DESIGN.md](DESIGN.md) lists what a port needs |
 
 ## How to use it
 
@@ -302,6 +303,26 @@ To test the installer, neither of these installs anything on the computer you ru
 `engine/internal/uninstall` has tests that read the player's source and the installer's: they fail if the player starts writing somewhere the uninstaller doesn't know, or the installer writes something it wouldn't remove.
 
 `scripts/check-package.sh` stops the build if a package carries or loads a disc-decryption library or a key database.
+
+### On Linux
+
+On a 64-bit Linux machine with the compilers and libraries the top of `scripts/setup-toolchain-linux.sh` lists, and a
+clone of WittyVisualizer beside this one, run these from the repository's top folder. The first fetches Qt and builds
+the same network-free FFmpeg as the Windows build (`scripts/ffmpeg-components.sh`), for your user only:
+
+```bash
+bash scripts/setup-toolchain-linux.sh
+```
+
+```bash
+bash scripts/build-linux.sh
+```
+
+The AppImage lands in `.build/linux/`, with FFmpeg's source beside it. `scripts/check-package-linux.sh` checks the
+folder it is made from by the same rules as the Windows package, and the AppImage tools are exactly the files
+`packaging/linux/tools.lock` names. The image carries its own Qt and FFmpeg; X11 or Wayland, OpenGL and PulseAudio or
+PipeWire come from the computer. Modules updated from **File, Settings** go into `~/.cache/WittyMediaPlayer/modules`,
+since nothing can change a file inside the image.
 
 ### Trying a real CD
 

@@ -89,7 +89,7 @@ cp "$HERE/licenses/"* "$PKG/licenses/"
 mkdir -p "$OUT/source"
 cp "$T/downloads/ffmpeg-$FFMPEG_VERSION.tar.xz" "$OUT/source/"
 cp "$T/downloads"/lame-*.tar.gz "$OUT/source/"
-sed -n '/DEC="/,/--extra-ldflags/p' "$HERE/scripts/setup-toolchain.sh" > "$OUT/source/how-ffmpeg-was-configured.txt"
+{ cat "$HERE/scripts/ffmpeg-components.sh"; sed -n '/\.\/configure/,/--extra-ldflags/p' "$HERE/scripts/setup-toolchain.sh"; } > "$OUT/source/how-ffmpeg-was-configured.txt"
 
 # The list of what's in the package is how the uninstaller knows the folder is ours, and what in it
 # it may remove.

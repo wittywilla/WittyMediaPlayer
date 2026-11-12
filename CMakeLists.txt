@@ -81,6 +81,16 @@ qt_add_resources(wmpcore "wmp_themes"
         resources/themes/oled.json
 )
 
+# The app's icon in its own windows, the About box and, on Linux, the task bar: the same
+# drawing as the .exe's (scripts/sync-brand.sh writes both).
+qt_add_resources(wmpcore "wmp_brand"
+    PREFIX "/brand"
+    BASE resources
+    FILES
+        resources/icon.svg
+        resources/icon-256.png
+)
+
 qt_add_executable(WittyMediaPlayer WIN32 src/main.cpp)
 target_link_libraries(WittyMediaPlayer PRIVATE wmpcore)
 # Its icon, and what a file's Properties and Task Manager say about it.

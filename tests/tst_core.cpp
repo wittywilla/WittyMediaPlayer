@@ -206,6 +206,7 @@ private slots:
     void readsSidecarSubtitles();
     void refusesWhatIsNotMedia();
     void refusesPlaylists();
+    void appIconIsBundled();
     void playsAudioOnly();
 
     void engineClientProtocol();
@@ -635,7 +636,14 @@ void Tests::refusesPlaylists()
     QVERIFY(list.open(QIODevice::WriteOnly));
     list.write("#EXTM3U\n#EXTINF:10,\nhttp://127.0.0.1:9/never.ts\n");
     list.close();
-    QVERIFY(!QString::fromLatin1(avformat_configuration()).contains(QLatin1String("--enable-network")));
+    // The release's own FFmpeg is built with --disable-network (scripts/build-windows.sh), and
+    // its test run says so with WMP_REQUIRE_NETWORK_FREE=1: there, anything else fails. A
+    // developer's system FFmpeg (Homebrew, a distribution's) has network code, so this test
+    // has nothing to prove against it and says why.
+    const QString config = QString::fromLatin1(avformat_configuration());
+    if (!config.contains(QLatin1String("--disable-network")) && qEnvironmentVariable("WMP_REQUIRE_NETWORK_FREE") != QLatin1String("1"))
+        QSKIP("this FFmpeg was built with network code (no --disable-network): the release's own FFmpeg is checked instead");
+    QVERIFY(!config.contains(QLatin1String("--enable-network")));
     QVERIFY(!QString::fromLatin1(avformat_configuration()).contains(QLatin1String("libbluray")));
     QVERIFY(!QString::fromLatin1(avformat_configuration()).contains(QLatin1String("dvdread")));
     QVERIFY(QString::fromLatin1(avformat_configuration()).contains(QLatin1String("--disable-network")));
@@ -648,6 +656,14 @@ void Tests::refusesPlaylists()
     s.filePath = list.fileName();
     p.open(s);
     QTRY_VERIFY_WITH_TIMEOUT(failed.count() == 1, 5000);
+}
+
+// The window icon is in the program, as the .exe's is: Linux and macOS have no other.
+void Tests::appIconIsBundled()
+{
+    QVERIFY(QFile::exists(QStringLiteral(":/brand/icon.svg")));
+    QImage png(QStringLiteral(":/brand/icon-256.png"));
+    QCOMPARE(png.size(), QSize(256, 256));
 }
 
 void Tests::playsAudioOnly()

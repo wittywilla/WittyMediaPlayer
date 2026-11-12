@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- Copyright (C) 2026 WittyWilla and contributors -->
+<component type="desktop-application">
+  <id>com.wittywilla.WittyMediaPlayer</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+  <name>WittyMediaPlayer</name>
+  <summary>Play video, audio, DVDs and Blu-rays with their real menus</summary>
+  <developer id="com.wittywilla">
+    <name>WittyWilla and contributors</name>
+  </developer>
+  <description>
+    <p>A desktop player for video, audio, DVDs and Blu-rays on your own computer, with the discs' real menus. It plays from a drive, a disc image or a folder, with no server and no account.</p>
+    <ul>
+      <li>Finds the film on a disc that hides it among decoy titles, and says why it chose that title.</li>
+      <li>Offers a film's other cuts and a TV disc's episodes, and remembers the one you choose.</li>
+      <li>Plays audio CDs and images, and copies them to FLAC, ALAC, WAV, MP3, AAC, Opus or Ogg Vorbis.</li>
+      <li>Nothing leaves your computer unless you press a button that says so. Copy-protected discs are refused: nothing is decrypted.</li>
+    </ul>
+  </description>
+  <launchable type="desktop-id">com.wittywilla.WittyMediaPlayer.desktop</launchable>
+  <url type="homepage">https://github.com/wittywilla/WittyMediaPlayer</url>
+  <url type="bugtracker">https://github.com/wittywilla/WittyMediaPlayer/issues</url>
+  <content_rating type="oars-1.1"/>
+  <provides>
+    <binary>WittyMediaPlayer</binary>
+  </provides>
+  <releases>
+    <release version="@VERSION@"/>
+  </releases>
+</component>

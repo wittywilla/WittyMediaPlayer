@@ -1,0 +1,11 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 WittyWilla and contributors
+# Starts WittyMediaPlayer from its AppImage: its own Qt and FFmpeg come first, and its own Qt
+# plugins only. The helpers are in usr/bin/bin, where the window looks for them.
+here="$(dirname "$(readlink -f "$0")")"
+export LD_LIBRARY_PATH="$here/usr/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+export QT_PLUGIN_PATH="$here/usr/plugins"
+export QT_QPA_PLATFORM_PLUGIN_PATH="$here/usr/plugins/platforms"
+unset QT_QPA_PLATFORMTHEME_PATH
+exec "$here/usr/bin/WittyMediaPlayer" "$@"

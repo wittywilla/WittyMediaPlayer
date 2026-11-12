@@ -11,6 +11,7 @@
 #include "ui/mainwindow.h"
 
 #include <QApplication>
+#include <QIcon>
 #include <QCommandLineParser>
 #include <QDir>
 #include <QSettings>
@@ -26,6 +27,13 @@ int main(int argc, char *argv[])
     QApplication::setOrganizationName(QStringLiteral("WittyMediaPlayer"));
     QApplication::setApplicationVersion(QStringLiteral(WMP_VERSION));
     QApplication app(argc, argv);
+    // Every window, dialog and the About box carry the app's icon. The PNG is the fallback
+    // where Qt has no SVG icon engine.
+    {
+        QIcon icon(QStringLiteral(":/brand/icon.svg"));
+        icon.addFile(QStringLiteral(":/brand/icon-256.png"), QSize(256, 256));
+        QApplication::setWindowIcon(icon);
+    }
 
     QCommandLineParser args;
     args.setApplicationDescription(QStringLiteral("Plays video, audio, DVDs and Blu-rays."));

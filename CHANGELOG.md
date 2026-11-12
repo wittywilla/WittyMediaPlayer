@@ -5,6 +5,9 @@ What changed in WittyMediaPlayer, newest first. What changed before it had a rep
 
 ## Unreleased
 
+- **Linux:** an AppImage for 64-bit Linux (`scripts/setup-toolchain-linux.sh`, `scripts/build-linux.sh`), with a menu entry, its icon and an AppStream description (`packaging/linux/`), checked by `scripts/check-package-linux.sh` like the Windows package: no network code in its FFmpeg, no disc-decryption library. Both builds now take FFmpeg's parts from one list, `scripts/ffmpeg-components.sh`. Not yet built or run on Linux.
+- The window, its dialogs and the About box carry the new icon on every system, not only the Windows program file.
+- The test that the player's FFmpeg has no network code says why it is skipped on a developer's FFmpeg (Homebrew's, a distribution's) instead of failing; the release's test run (`scripts/test.sh`) still requires it.
 - A new icon in the family's new look: a ring with a play button inside and a sky-blue dot, on the dark tile. It and the installer's pictures are now drawn by WittyMediaServer's genicon, the generator for every logo of the family (`scripts/sync-brand.sh`), which replaces this repository's own `engine/tools/genicon`.
 Version 0.1.3. Version 0.1.2 was tagged but never published, because its build failed on GitHub, so everything below
 arrives with 0.1.3.

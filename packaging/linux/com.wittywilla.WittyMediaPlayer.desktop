@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=WittyMediaPlayer
+GenericName=Media player
+Comment=Play video, audio, DVDs and Blu-rays with their menus, and copy CDs
+Exec=WittyMediaPlayer %F
+Icon=com.wittywilla.WittyMediaPlayer
+Terminal=false
+Categories=AudioVideo;Video;Audio;Player;
+Keywords=dvd;bluray;blu-ray;cd;video;music;iso;
+MimeType=video/x-matroska;video/mp4;video/x-msvideo;video/mpeg;video/mp2t;video/webm;video/x-ms-wmv;audio/mpeg;audio/aac;audio/flac;audio/ogg;audio/x-wav;application/x-cd-image;application/x-iso9660-image;x-content/video-dvd;x-content/video-bluray;x-content/audio-cdda;
+StartupWMClass=WittyMediaPlayer

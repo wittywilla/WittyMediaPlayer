@@ -144,15 +144,7 @@ if [ ! -f "$P/bin/avcodec-62.dll" ] || [ ! -f "$P/.with-encoders" ]; then
   fetch "https://ffmpeg.org/releases/ffmpeg-$FFMPEG_VERSION.tar.xz" "ffmpeg-$FFMPEG_VERSION.tar.xz" "$FFMPEG_SHA256"
   rm -rf "$T/src/ffmpeg-$FFMPEG_VERSION"
   tar -xJf "$T/downloads/ffmpeg-$FFMPEG_VERSION.tar.xz" -C "$T/src"
-  DEC="mpeg1video mpeg2video mpeg4 h263 h264 hevc vc1 wmv1 wmv2 wmv3 vp8 vp9 av1 theora msmpeg4v1 msmpeg4v2 msmpeg4v3 mjpeg
-       aac aac_latm ac3 eac3 dca truehd mlp mp1 mp2 mp3 mp3float flac alac opus vorbis wmav1 wmav2 wmapro wmalossless
-       pcm_s8 pcm_u8 pcm_s16le pcm_s16be pcm_s24le pcm_s24be pcm_s32le pcm_s32be pcm_f32le pcm_f64le pcm_alaw pcm_mulaw pcm_dvd pcm_bluray adpcm_ms ape tta wavpack
-       dvdsub pgssub dvbsub xsub subrip srt ass ssa webvtt text mov_text"
-  DMX="matroska mov avi mpegts mpegps mpegvideo mpegtsraw asf flv ogg wav flac mp3 aac ac3 eac3 dts dtshd truehd mlp ape wv aiff tta caf nut rm vc1 h264 hevc m4v
-       srt ass webvtt"
-  PAR="h264 hevc mpegvideo mpeg4video vc1 vp8 vp9 av1 aac aac_latm ac3 dca mlp mpegaudio flac opus vorbis dvdsub dvd_nav dvbsub pgs"
-  BSF="aac_adtstoasc h264_mp4toannexb hevc_mp4toannexb extract_extradata vp9_superframe_split vp9_superframe av1_frame_merge av1_frame_split dts2pts truehd_core"
-  list() { echo $1 | tr ' ' ','; }
+  . "$(dirname "${BASH_SOURCE[0]}")/ffmpeg-components.sh"
   (
     cd "$T/src/ffmpeg-$FFMPEG_VERSION"
     ./configure --prefix="$P" --arch=x86_64 --target-os=mingw32 --cc=gcc --cxx=g++ --x86asmexe=nasm \
@@ -160,11 +152,11 @@ if [ ! -f "$P/bin/avcodec-62.dll" ] || [ ! -f "$P/.with-encoders" ]; then
       --disable-autodetect --disable-network --disable-programs --disable-doc --disable-debug --disable-avdevice \
       --disable-everything --enable-zlib --enable-d3d11va --enable-dxva2 \
       --pkg-config="$T/pkgconfig-shim/pkg-config" --enable-libmp3lame --enable-libopus --enable-libvorbis \
-      --enable-encoder=flac,alac,aac,pcm_s16le,libmp3lame,libopus,libvorbis --enable-muxer=flac,wav,ipod,mp4,mp3,ogg,opus \
+      --enable-encoder="$ENC" --enable-muxer="$MUX" \
       --enable-decoder="$(list "$DEC")" --enable-demuxer="$(list "$DMX")" --enable-parser="$(list "$PAR")" \
       --enable-bsf="$(list "$BSF")" --enable-protocol=file \
       --enable-hwaccel=h264_d3d11va,h264_d3d11va2,hevc_d3d11va,hevc_d3d11va2,vc1_d3d11va,vc1_d3d11va2,wmv3_d3d11va,wmv3_d3d11va2,mpeg2_d3d11va,mpeg2_d3d11va2,vp9_d3d11va,vp9_d3d11va2,av1_d3d11va,av1_d3d11va2 \
-      --enable-filter=yadif,bwdif,buffer,buffersink,format,scale \
+      --enable-filter="$FILTERS" \
       --extra-cflags="-I$(cygpath -m "$P/include")" --extra-ldflags="-L$(cygpath -m "$P/lib") -static-libgcc" \
       >"$T/ffmpeg-configure.log" 2>&1 || { tail -20 "$T/ffmpeg-configure.log"; tail -30 ffbuild/config.log; exit 1; }
     # Windows can't carry FFmpeg's long lists of object files on a command line, so
