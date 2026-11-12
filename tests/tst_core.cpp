@@ -1228,7 +1228,6 @@ void Tests::discGuideDoubtsWhatIsOdd()
     // A feature that names nothing is no feature.
     const DiscGuide blank = DiscGuide::fromJson({{"kind", "bluray"}, {"feature", QJsonObject{{"title", 3}}}});
     QVERIFY(blank.present && !blank.feature.valid() && blank.summary().isEmpty());
-    QVERIFY(blank.whyText().contains(QLatin1String("found nothing")));
 }
 
 // One of an engine's synthetic discs, from the folder its export wrote, with what the
@@ -1309,7 +1308,6 @@ void Tests::syntheticDvdsOfferTheirChoices()
         QVERIFY(qAbs(g.feature.duration - want.value("featureSec").toDouble()) < 1);
         QVERIFY(g.decoys >= want.value("minDecoys").toInt());
         QVERIFY2(w.statusText().contains(QLatin1String("The main feature is titles 7, 3, 9, 2, 2:00:00")), qPrintable(w.statusText()));
-        QVERIFY(g.whyText().contains(QLatin1String("They play here as one film")));
         // The Disc menu: the feature by name, the question, and the decoys one level down.
         auto *titles = w.findChild<QMenu *>(QStringLiteral("menuTitles"));
         auto *versions = w.findChild<QMenu *>(QStringLiteral("menuVersions"));

@@ -5,6 +5,7 @@
 // agree. After an action the pages on show are asked for again.
 #include "mainwindow.h"
 
+#include "../cd/cdpage.h"
 #include "../disc/disccontroller.h"
 #include "../engine/engineclient.h"
 #include "../media/player.h"

@@ -399,3 +399,16 @@ func TestAGuideIsCutAndCleaned(t *testing.T) {
 		t.Errorf("%d %s %v %d %v", len(g.Others), g.Level, g.Confidence, g.Decoys, g.Warnings)
 	}
 }
+
+func TestWhyPageForAGuideWithNoFeature(t *testing.T) {
+	req := request(PageWhy)
+	req.State.Disc = &Disc{Kind: "bluray", Guide: &Guide{}}
+	raw, err := Render(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	doc, _ := sdui.Unmarshal(raw)
+	if !strings.Contains(textsOf(doc), "found nothing") {
+		t.Errorf("a guide with no feature says so: %s", textsOf(doc))
+	}
+}
