@@ -107,6 +107,13 @@ func loadSynth(kind string) *synthSet {
 		cmd := exec.Command(gobin, "test", "-run", "^TestExportSyntheticDiscs$", "-count=1", ".")
 		cmd.Dir = engine
 		cmd.Env = append(os.Environ(), env+"="+dir)
+		// A checkout that a go.work names is built by that go.work too: run from inside it, the go
+		// command would look for one beside it, find none and build it against its go.mod alone.
+		if work, err := exec.Command(gobin, "env", "GOWORK").Output(); err == nil {
+			if w := strings.TrimSpace(string(work)); w != "" && w != "off" {
+				cmd.Env = append(cmd.Env, "GOWORK="+w)
+			}
+		}
 		if out, err := cmd.CombinedOutput(); err != nil {
 			s.fatal = repo + " couldn't write its synthetic discs: " + err.Error() + "\n" + string(out)
 			return
