@@ -7,7 +7,8 @@
 #include "media/audiooutput.h"
 #include "media/player.h"
 #include "media/vlcplayback.h"
-#include "ui/settingsdialog.h"
+#include "sdui/pagehost.h"
+#include "sdui/sduiview.h"
 #include "ui/mainwindow.h"
 #include "video/videoview.h"
 #include "visual/visualizer.h"
@@ -112,17 +113,11 @@ struct Runner {
                 window->disc()->seekTo(arg.toDouble());
             else
                 window->player()->seek(arg.toDouble());
-        } else if (cmd == QLatin1String("settingsgrab")) {
-            SettingsDialog d(window->player(), window->engine(), true, VlcPlayback::detectFolder(), false, window);
-            d.setWindowFlag(Qt::Tool);
-            d.setAttribute(Qt::WA_ShowWithoutActivating);
-            d.move(-20000, -20000);
-            d.show();
-            for (int i = 0; i < 40; i++) { // the module list comes from the helper
-                qApp->processEvents(QEventLoop::AllEvents, 50);
-                QThread::msleep(25);
-            }
-            d.grab().save(arg);
+        } else if (cmd == QLatin1String("pagegrab")) {
+            // pagegrab <page> <file>: a page of the SDUI renderer, drawn off screen at 1000 by 760.
+            const QString page = arg.section(QLatin1Char(' '), 0, 0), file = arg.section(QLatin1Char(' '), 1);
+            window->grabPage(page, file);
+            delay = 1500;
         } else if (cmd == QLatin1String("engine")) {
             window->setUseVlc(arg == QLatin1String("vlc"));
         } else if (cmd == QLatin1String("volume")) {

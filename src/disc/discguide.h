@@ -36,6 +36,7 @@ struct DiscGuide {
     static constexpr int kMaxChoices = 100;
     static constexpr int kMaxNotes = 16;
 
+    QJsonObject raw; // the guide as the module sent it: the pages are made from it
     bool present = false; // an older disc module sends none
     QString kind;         // dvd or bluray
     DiscChoice feature;
@@ -65,8 +66,6 @@ struct DiscGuide {
     QString detailFor(int title) const;
     // One line: the pick, its length and how sure. Read out when a disc opens.
     QString summary() const;
-    // The whole answer to "why this title", in plain lines.
-    QString whyText() const;
 };
 
 } // namespace wmp

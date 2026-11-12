@@ -266,6 +266,9 @@ func (b *builder) look() {
 		c.Tokens = t.Tokens
 		cards = append(cards, c)
 	}
+	if b.st.ThemeNote != "" {
+		b.add(notice("theme-note", "info", "", b.st.ThemeNote))
+	}
 	grid := node("Grid", "themes", props{"title": "Themes", "cardStyle": "square", "cardSize": "m"}, cards...)
 	b.add(grid)
 	if b.st.Finishes {
@@ -279,6 +282,15 @@ func (b *builder) look() {
 			rows = append(rows, item("finish-"+o.id, o.label, o.note, selMark(on), "", command("app.finish.set", o.id, nil)))
 		}
 		b.add(list("finish", "Finish", rows...))
+	}
+	var removals []nodeT
+	for _, t := range themes {
+		if t.Imported {
+			removals = append(removals, item("remove-"+t.ID, "Remove "+t.Name, "Takes this imported theme off this computer", "", "trash", command("app.theme.remove", t.ID, nil)))
+		}
+	}
+	if len(removals) > 0 {
+		b.add(list("imported", "Imported themes", removals...))
 	}
 	imp := button("import", "Import a theme…", "secondary", command("app.theme.import", "", nil))
 	imp.Props["icon"] = "plus"

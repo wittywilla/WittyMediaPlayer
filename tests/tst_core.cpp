@@ -17,7 +17,8 @@
 #include "ui/controlbar.h"
 #include "ui/imagedialog.h"
 #include "ui/mainwindow.h"
-#include "ui/settingsdialog.h"
+#include "sdui/pagehost.h"
+#include "sdui/sduiview.h"
 #include "ui/theme.h"
 #include "video/videoview.h"
 #include "visual/visualizer.h"
@@ -45,7 +46,10 @@
 #include <QImage>
 #include <QTemporaryDir>
 #include <QTest>
+#include <QPushButton>
+#include <QStandardPaths>
 #include <QToolButton>
+#include <private/qzipwriter_p.h>
 
 #ifdef Q_OS_WIN
 #define WIN32_LEAN_AND_MEAN
@@ -189,6 +193,9 @@ private slots:
     void colorMatrixRangeBlackAndWhite();
     void themesAreReadable();
     void themesMatchTheProject();
+    void themesCarryTheirFinish();
+    void themeImportFollowsTheServersRules();
+    void oldThemesMoveToTheClosest();
     void iconsShowWhenDisabled();
     void frameFollowsTheTheme();
     void imageNames();
@@ -217,7 +224,9 @@ private slots:
     void chapterButtonsAreForDiscs();
     void trackMenusWithNothingOpen();
 
-    void settingsWindow();
+    void vlcFolderIsChecked();
+    void sduiConformance();
+    void sduiDrawsAPage();
     void vlcIdsAndTimes();
     void vlcPlaysAClip();
     void vlcCantReadADiscModule();
@@ -344,6 +353,98 @@ void Tests::themesMatchTheProject()
     }
 }
 
+// The server's finish and scene reach the window: Aero is glossy glass, Satellite a silver bevel, the plain
+// ones nothing, and a flat look draws none of it.
+void Tests::themesCarryTheirFinish()
+{
+    Themes::setFlat(false);
+    const Theme aero = Themes::load(QStringLiteral("aeroday"));
+    QCOMPARE(aero.finish.glass, QStringLiteral("full"));
+    QCOMPARE(aero.finish.gloss, QStringLiteral("full"));
+    QVERIFY(!aero.scene.isEmpty());
+    QVERIFY(Themes::finishSheet(aero).contains(QLatin1String("qlineargradient")));
+    QCOMPARE(Themes::load(QStringLiteral("satellite")).finish.bevel, QStringLiteral("full"));
+    QVERIFY(!Themes::load(QStringLiteral("default")).finish.any());
+    QVERIFY(Themes::load(QStringLiteral("default")).scene.isEmpty());
+    Themes::setFlat(true);
+    QVERIFY(Themes::finishSheet(aero).isEmpty());
+    Themes::setFlat(false);
+    // Every theme's style sheet has no placeholder left, finished or not.
+    for (const QString &id : Themes::ids())
+        QVERIFY2(!Themes::styleSheet(Themes::load(id)).contains(QLatin1Char('@')), qPrintable(id));
+    QFile tokens(QStringLiteral(":/tokens.json"));
+    QVERIFY(tokens.open(QIODevice::ReadOnly));
+    QVERIFY(QJsonDocument::fromJson(tokens.readAll()).object().contains(QStringLiteral("shape")));
+    QCOMPARE(Themes::ids().size(), 15);
+}
+
+static QString makeZip(const QString &path, const QMap<QString, QByteArray> &files)
+{
+    QZipWriter z(path);
+    for (auto it = files.cbegin(); it != files.cend(); ++it)
+        z.addFile(it.key(), it.value());
+    z.close();
+    return path;
+}
+
+// A theme ZIP is variables and fonts only, readable, and named by an id of its own.
+void Tests::themeImportFollowsTheServersRules()
+{
+    QStandardPaths::setTestModeEnabled(true);
+    QDir(Themes::importDir()).removeRecursively();
+    const QByteArray json = R"({"id":"plum","name":"Plum","scheme":"dark"})";
+    const QByteArray css = ":root { color-scheme: dark; --bg: #1a0f1e; --bg-2: #241429; --bg-3: #2e1a34; --bg-4: #3a2242; --fg: #f4e9f7; --fg-2: #cbb6d1;"
+                           " --fg-3: #a98fb1; --accent: #d98cf0; --accent-fg: #1a0f1e; --radius: 6px; }\n";
+    const auto zip = [&](const QString &name, const QMap<QString, QByteArray> &f) { return makeZip(dir_.filePath(name), f); };
+
+    ThemeImport ok = Themes::importZip(zip(QStringLiteral("plum.zip"), {{"theme.json", json}, {"theme.css", css}}));
+    QVERIFY2(ok.ok, qPrintable(ok.error));
+    QCOMPARE(ok.id, QStringLiteral("plum"));
+    QVERIFY(Themes::importedIds().contains(QStringLiteral("plum")));
+    const Theme plum = Themes::load(QStringLiteral("plum"));
+    QVERIFY(plum.imported);
+    QCOMPARE(plum.bg, QColor(0x1a0f1e));
+    QCOMPARE(plum.radius, 6);
+    QVERIFY(Themes::allIds().first() == QLatin1String("plum")); // imported themes are offered first
+
+    // Anything but variables and fonts is refused, naming the rule.
+    ThemeImport bad = Themes::importZip(zip(QStringLiteral("rules.zip"), {{"theme.json", json}, {"theme.css", css + ".sidebar { display: none; }"}}));
+    QVERIFY(!bad.ok);
+    QVERIFY2(bad.error.contains(QLatin1String(".sidebar")), qPrintable(bad.error));
+    bad = Themes::importZip(zip(QStringLiteral("media.zip"), {{"theme.json", json}, {"theme.css", css + "@media (min-width: 1px) { :root { --x: 1 } }"}}));
+    QVERIFY(!bad.ok);
+    // A font may only be a file in the ZIP.
+    bad = Themes::importZip(zip(QStringLiteral("font.zip"), {{"theme.json", json}, {"theme.css", css + "@font-face { font-family: X; src: url(https://example.org/x.woff2); }"}}));
+    QVERIFY(!bad.ok);
+    bad = Themes::importZip(zip(QStringLiteral("climb.zip"), {{"theme.json", json}, {"theme.css", css + "@font-face { font-family: X; src: url(../x.woff2); }"}}));
+    QVERIFY(!bad.ok);
+    // The reserved word, the built-in ids, unreadable text, a folder inside the ZIP and a missing file.
+    QVERIFY(!Themes::importZip(zip(QStringLiteral("b.zip"), {{"theme.json", R"({"id":"plum","builtin":true})"}, {"theme.css", css}})).ok);
+    QVERIFY(!Themes::importZip(zip(QStringLiteral("id.zip"), {{"theme.json", R"({"id":"default"})"}, {"theme.css", css}})).ok);
+    QByteArray faint = css;
+    faint.replace("--fg: #f4e9f7", "--fg: #2a1a30");
+    QVERIFY(!Themes::importZip(zip(QStringLiteral("faint.zip"), {{"theme.json", json}, {"theme.css", faint}})).ok);
+    QVERIFY(!Themes::importZip(zip(QStringLiteral("deep.zip"), {{"folder/theme.json", json}, {"folder/theme.css", css}})).ok);
+    QVERIFY(!Themes::importZip(zip(QStringLiteral("one.zip"), {{"theme.json", json}})).ok);
+    QVERIFY(!Themes::importZip(dir_.filePath(QStringLiteral("nothing.zip"))).ok);
+    // A refused import leaves the earlier one alone.
+    QVERIFY(Themes::importedIds().contains(QStringLiteral("plum")));
+
+    QVERIFY(Themes::removeImported(QStringLiteral("plum")));
+    QVERIFY(!Themes::importedIds().contains(QStringLiteral("plum")));
+    QCOMPARE(Themes::load(QStringLiteral("plum")).id, QStringLiteral("default")); // a theme that has gone is the house look
+    QVERIFY(!Themes::removeImported(QStringLiteral("default")));
+    QStandardPaths::setTestModeEnabled(false);
+}
+
+// The player's ten earlier themes became the server's fifteen: nobody is left without one.
+void Tests::oldThemesMoveToTheClosest()
+{
+    for (const char *old : {"dark", "dark-blue", "dark-teal", "dark-green", "dark-gold", "dark-orange", "dark-red", "dark-pink", "dark-purple"})
+        QVERIFY2(Themes::ids().contains(Themes::migrate(QLatin1String(old))), old);
+    QCOMPARE(Themes::migrate(QStringLiteral("oled")), QStringLiteral("oled"));
+}
+
 // A control that can't be used must look different, and every icon has a picture big enough for 300%.
 void Tests::iconsShowWhenDisabled()
 {
@@ -368,11 +469,10 @@ void Tests::iconsShowWhenDisabled()
 // Windows draws the title bar from the colour scheme, so a dark theme asks for a dark one.
 void Tests::frameFollowsTheTheme()
 {
-    for (const QString &id : Themes::ids())
-        QVERIFY2(Themes::colorScheme(Themes::load(id)) == Qt::ColorScheme::Dark, qPrintable(id));
-    Theme light = Themes::load(QStringLiteral("dark"));
-    light.bg = QColor(0xf4f4f6);
-    QVERIFY(Themes::colorScheme(light) == Qt::ColorScheme::Light);
+    for (const QString &id : Themes::ids()) {
+        const Theme t = Themes::load(id);
+        QVERIFY2(Themes::colorScheme(t) == (t.scheme == QLatin1String("light") ? Qt::ColorScheme::Light : Qt::ColorScheme::Dark), qPrintable(id));
+    }
 }
 
 void Tests::imageNames()
@@ -854,32 +954,105 @@ void Tests::trackMenusWithNothingOpen()
     QCOMPARE(subs->findChildren<QActionGroup *>(Qt::FindDirectChildrenOnly).size(), 1);
 }
 
-// The choice of libraries, with VLC credited where it's chosen.
-void Tests::settingsWindow()
+// A wrong VLC folder says so, and nothing loads. (The Settings page, with VLC credited where it is
+// chosen, is the engine's: engine/internal/pages tests it, and the window draws it with SduiView.)
+void Tests::vlcFolderIsChecked()
 {
-    Player p;
-    p.initAudio(true);
-    SettingsDialog d(&p, nullptr, false, VlcPlayback::detectFolder(), false);
-    d.show();
-    QVERIFY(!d.useVlc());
-    QVERIFY(SettingsDialog::vlcCredit().contains(QLatin1String("VideoLAN")));
-    auto *radio = d.findChildren<QRadioButton *>().value(1);
-    QVERIFY(radio);
-    radio->setChecked(true);
-    QVERIFY(d.useVlc());
-    bool credited = false;
-    for (QLabel *l : d.findChildren<QLabel *>())
-        credited = credited || l->text() == SettingsDialog::vlcCredit();
-    QVERIFY(credited);
-    const QString grab = qEnvironmentVariable("WMP_TEST_GRAB");
-    if (!grab.isEmpty())
-        d.grab().save(QDir(grab).filePath(QStringLiteral("settings.png")));
-    // A wrong folder says so, and nothing loads.
     QString why;
     Player other;
     other.initAudio(true);
     QVERIFY(!other.enableVlc(dir_.path(), &why));
     QVERIFY(why.contains(QLatin1String("aren't in that folder")));
+}
+
+// The renderer against WittyMediaServer's shared conformance fixtures (pkg/sdui/conformance): for every
+// case whose components this renderer draws, what it built must match the kit's normalised layout in
+// id, type, depth, role and action, in order. Cases with other components are counted, not hidden.
+void Tests::sduiConformance()
+{
+    QString dir = qEnvironmentVariable("WMP_SDUI_FIXTURES");
+    if (dir.isEmpty() && !qEnvironmentVariable("WMP_TEST_REPO").isEmpty())
+        dir = QDir(qEnvironmentVariable("WMP_TEST_REPO")).filePath(QStringLiteral("pkg/sdui/conformance/fixtures"));
+    if (dir.isEmpty() || !QDir(dir).exists())
+        QSKIP("WMP_SDUI_FIXTURES (or WMP_TEST_REPO, a WittyMediaServer checkout) is not set");
+    int compared = 0, skipped = 0;
+    QStringList failures;
+    SduiView view;
+    view.resize(1000, 800);
+    for (const QString &name : QDir(dir).entryList({QStringLiteral("*.json")}, QDir::Files, QDir::Name)) {
+        if (name == QLatin1String("index.json"))
+            continue;
+        QFile f(QDir(dir).filePath(name));
+        QVERIFY(f.open(QIODevice::ReadOnly));
+        const QJsonObject fx = QJsonDocument::fromJson(f.readAll()).object();
+        const QJsonObject expected = fx.value(QStringLiteral("expected")).toObject();
+        const QJsonObject want = expected.value(QStringLiteral("layout")).toObject();
+        if (expected.value(QStringLiteral("notFound")).toBool() || want.isEmpty())
+            continue;
+        const QJsonArray visible = want.value(QStringLiteral("visible")).toArray();
+        bool known = true;
+        for (const auto &v : visible)
+            known = known && SduiView::knownTypes().contains(v.toObject().value(QStringLiteral("type")).toString());
+        if (!known) {
+            skipped++;
+            continue;
+        }
+        QVERIFY2(view.setDocument(expected.value(QStringLiteral("document")).toObject()), qPrintable(name));
+        const QJsonArray got = view.describe().value(QStringLiteral("visible")).toArray();
+        compared++;
+        if (got.size() != visible.size()) {
+            failures << QStringLiteral("%1: built %2 nodes, the kit has %3").arg(name).arg(got.size()).arg(visible.size());
+            continue;
+        }
+        for (int i = 0; i < got.size(); i++) {
+            const QJsonObject g = got[i].toObject(), w = visible[i].toObject();
+            for (const char *key : {"id", "type", "depth", "role"})
+                if (g.value(QLatin1String(key)) != w.value(QLatin1String(key))) {
+                    failures << QStringLiteral("%1: node %2 (%3) %4 is %5, the kit has %6")
+                                    .arg(name).arg(i).arg(w.value(QStringLiteral("id")).toString(), QLatin1String(key),
+                                         QString::fromUtf8(QJsonDocument(QJsonArray{g.value(QLatin1String(key))}).toJson(QJsonDocument::Compact)),
+                                         QString::fromUtf8(QJsonDocument(QJsonArray{w.value(QLatin1String(key))}).toJson(QJsonDocument::Compact)));
+                    break;
+                }
+            if (w.contains(QStringLiteral("action")) && g.value(QStringLiteral("action")) != w.value(QStringLiteral("action")))
+                failures << QStringLiteral("%1: node %2 action %3, the kit has %4").arg(name, w.value(QStringLiteral("id")).toString(), g.value(QStringLiteral("action")).toString(), w.value(QStringLiteral("action")).toString());
+        }
+    }
+    qInfo("SDUI conformance: %d cases compared, %d need components this renderer doesn't draw yet", compared, skipped);
+    QVERIFY2(failures.isEmpty(), qPrintable(failures.mid(0, 12).join(QLatin1Char('\n'))));
+    QVERIFY(compared > 0);
+}
+
+// A hand-made document: what is drawn is focusable and answers, and a document for another
+// catalogue is refused.
+void Tests::sduiDrawsAPage()
+{
+    SduiView view;
+    view.resize(900, 700);
+    const QJsonObject button{{"type", "Button"}, {"id", "go"}, {"props", QJsonObject{{"label", "Open a file"}, {"variant", "primary"}}},
+                             {"action", QJsonObject{{"type", "command"}, {"op", "app.openFile"}}}};
+    const QJsonObject dimmed{{"type", "Button"}, {"id", "key-red"}, {"props", QJsonObject{{"label", "Red"}, {"dimmed", true}}}};
+    const QJsonObject unknown{{"type", "Hologram"}, {"id", "holo"}, {"children", QJsonArray{button}}};
+    const QJsonObject doc{{"version", 1}, {"catalog", 7}, {"page", QJsonObject{{"id", "t"}, {"title", "T"}}},
+                          {"layout", QJsonObject{{"breakpoint", "large"}, {"text", QJsonObject{{"body", 14}}}, {"spacing", QJsonObject{{"s", 8}, {"m", 16}, {"l", 24}}}}},
+                          {"root", QJsonObject{{"type", "Page"}, {"id", "page"}, {"props", QJsonObject{{"title", "T"}}}, {"children", QJsonArray{dimmed, unknown}}}}};
+    QVERIFY(view.setDocument(doc));
+    view.show();
+    QSignalSpy spy(&view, &SduiView::activated);
+    // A dimmed key can't be pressed and takes no focus; an unknown component is its children in a column.
+    QCOMPARE(view.focusOrder(), QStringList{QStringLiteral("go")});
+    auto *b = view.findChildren<QPushButton *>().value(1);
+    QVERIFY(b && b->text() == QLatin1String("Open a file"));
+    b->click();
+    QCOMPARE(spy.count(), 1);
+    QCOMPARE(spy.at(0).at(0).toJsonObject().value(QStringLiteral("op")).toString(), QStringLiteral("app.openFile"));
+    QJsonObject other = doc;
+    other.insert(QStringLiteral("catalog"), 8);
+    QVERIFY(!view.setDocument(other));
+    QCOMPARE(view.pageId(), QStringLiteral("t")); // unchanged
+    // What can't be made is one Notice, not a blank window.
+    QVERIFY(view.setDocument(PageHost::errorDocument(QStringLiteral("nope"))));
+    QCOMPARE(view.built().value(1).type, QStringLiteral("Notice"));
 }
 
 void Tests::vlcIdsAndTimes()
@@ -1013,14 +1186,6 @@ void Tests::discGuideReads()
     QCOMPARE(g.detailFor(9), QStringLiteral("part 3 of the main feature"));
     QCOMPARE(g.detailFor(6), QStringLiteral("trailer"));
     QVERIFY(g.detailFor(4).isEmpty());
-    // The answer to "why this title" has the reason, how sure, the length, the parts,
-    // the warnings and what was mended or padded, and says nothing was unlocked.
-    const QString why = g.whyText();
-    for (const char *part : {"Title 7 is the main feature because the disc starts it by itself.", "How sure: high (99%).", "Length: 2:00:00, 30 chapters.",
-                             "4 titles (7, 3, 9, 2). They play here as one film", "This disc has 9 decoy titles.", "9 decoy titles are left out of the menus",
-                             "disagreed in 3 places", "the cell table was mended", "and 2 more.", "So far 2 sectors of the disc couldn't be read and were taken as empty", "never from unlocking anything"})
-        QVERIFY2(why.contains(QLatin1String(part)), part);
-
     // A Blu-ray's words.
     const DiscGuide bd = DiscGuide::fromJson(QJsonDocument::fromJson(R"json({"kind":"bluray","level":"medium","confidence":0.7,
         "feature":{"id":"feature","kind":"feature","label":"Playlist 00100","title":100,"durationSec":6084.7,"chapters":11},
@@ -1032,7 +1197,6 @@ void Tests::discGuideReads()
     QCOMPARE(bd.versions[1].menuText(), QStringLiteral("Shortest cut, 1:41:24 (main feature)"));
     QCOMPARE(bd.versions[0].menuText(), QStringLiteral("Longest cut, 1:53:24 (playlist 00101)"));
     QCOMPARE(bd.summary(), QStringLiteral("The main feature is playlist 00100, 1:41:24. The disc engine is fairly sure of it."));
-    QVERIFY(bd.whyText().contains(QLatin1String("playlists, clip information and stream files disagree in 1 place")));
 }
 
 // A guide is what a disc module sent: an older module sends none, and a damaged one may
@@ -1041,7 +1205,6 @@ void Tests::discGuideDoubtsWhatIsOdd()
 {
     const DiscGuide none = DiscGuide::fromJson({});
     QVERIFY(!none.present && none.summary().isEmpty() && !none.lists(1));
-    QVERIFY(none.whyText().contains(QLatin1String("from before it could say why")));
 
     QJsonArray many;
     for (int i = 0; i < 5000; i++)

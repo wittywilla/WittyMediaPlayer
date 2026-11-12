@@ -32,6 +32,7 @@ import (
 	"github.com/wittywilla/wittymediaplayer/engine/internal/drives"
 	"github.com/wittywilla/wittymediaplayer/engine/internal/imaging"
 	"github.com/wittywilla/wittymediaplayer/engine/internal/modhost"
+	"github.com/wittywilla/wittymediaplayer/engine/internal/pages"
 	"github.com/wittywilla/wittymodule"
 )
 
@@ -365,6 +366,8 @@ func (h *helper) handle(method string, raw json.RawMessage) (any, []byte, error)
 	case "drives":
 		list, err := drives.List()
 		return list, nil, err
+	case "pages":
+		return h.page(raw)
 	case "modules":
 		return h.mgr.Statuses(), nil, nil
 	case "module-rollback":
@@ -501,4 +504,29 @@ func openSource(path string, drive bool) (imaging.Source, func(), error) {
 		return nil, nil, errors.New("a folder has no sectors to copy; open it to play it instead")
 	}
 	return fileSource{f, st.Size()}, func() { f.Close() }, nil
+}
+
+// page makes the document for one of the window's non-playback screens (engine/internal/pages).
+// The window sends the page and what it keeps; the drives and the disc modules are read here.
+func (h *helper) page(raw json.RawMessage) (any, []byte, error) {
+	var req pages.Request
+	if err := json.Unmarshal(raw, &req); err != nil {
+		return nil, nil, err
+	}
+	for _, m := range h.mgr.Statuses() {
+		req.Modules = append(req.Modules, pages.Module{ID: m.ID, Name: m.Name, InUse: m.InUse, Builtin: m.IsBuilt, CanGoBack: m.CanGoBack, Note: m.Note})
+	}
+	if req.Page == pages.PageStart {
+		list, err := drives.List()
+		if err == nil {
+			for _, d := range list {
+				req.Drives = append(req.Drives, pages.Drive{Path: d.Path, Name: d.Name, Label: d.Label, Media: d.Media, Audio: d.Audio})
+			}
+		}
+	}
+	doc, err := pages.Render(req)
+	if err != nil {
+		return nil, nil, &wittymodule.CallError{Code: "bad-page", Message: err.Error()}
+	}
+	return doc, nil, nil
 }

@@ -60,11 +60,6 @@ QStringList linesFrom(const QJsonValue &v)
     return out;
 }
 
-QString counted(qint64 n, const QString &one, const QString &many)
-{
-    return n == 1 ? QStringLiteral("1 %1").arg(one) : QStringLiteral("%1 %2").arg(n).arg(many);
-}
-
 } // namespace
 
 QString DiscChoice::menuText() const
@@ -86,6 +81,7 @@ DiscGuide DiscGuide::fromJson(const QJsonObject &o)
     if (o.isEmpty())
         return g;
     g.present = true;
+    g.raw = o;
     g.kind = o.value(QStringLiteral("kind")).toString();
     g.feature = choiceFrom(o.value(QStringLiteral("feature")).toObject());
     g.why = o.value(QStringLiteral("why")).toString().trimmed();
@@ -168,54 +164,6 @@ QString DiscGuide::summary() const
     else
         s += QStringLiteral(" The disc engine isn't sure of it: see Disc, Why this %1.").arg(unit());
     return s;
-}
-
-QString DiscGuide::whyText() const
-{
-    if (!present)
-        return QStringLiteral("This disc's module is from before it could say why it picks a title. A newer one may be in File, Settings.");
-    if (!feature.valid())
-        return QStringLiteral("The disc engine found nothing on this disc that could be its main feature.");
-    QStringList out;
-    out << (why.isEmpty() ? QStringLiteral("%1 was picked as the main feature.").arg(feature.label) : why);
-    out << QStringLiteral("How sure: %1 (%2%).").arg(level).arg(qRound(confidence * 100));
-    QString length = QStringLiteral("Length: %1").arg(ControlBar::formatTime(feature.duration));
-    if (feature.chapters > 0)
-        length += QStringLiteral(", %1").arg(counted(feature.chapters, QStringLiteral("chapter"), QStringLiteral("chapters")));
-    out << length + QLatin1Char('.');
-    if (feature.titles.size() > 1) {
-        QStringList nums;
-        for (int t : feature.titles)
-            nums << QString::number(t);
-        out << (feature.oneStream
-                    ? QStringLiteral("The disc cuts the film into %1 titles (%2). They play here as one film, in the disc's order.").arg(feature.titles.size()).arg(nums.join(QStringLiteral(", ")))
-                    : QStringLiteral("The disc cuts the film into %1 titles (%2), and its own program plays them one after another.").arg(feature.titles.size()).arg(nums.join(QStringLiteral(", "))));
-    } else if (feature.source == QLatin1String("commands")) {
-        out << QStringLiteral("The film is put together by the disc's own commands, and plays here in that order.");
-    }
-    if (!reasons.isEmpty())
-        out << QString() << reasons;
-    if (!warnings.isEmpty())
-        out << QString() << warnings;
-    QStringList facts;
-    if (decoys > 0)
-        facts << QStringLiteral("%1 left out of the menus; Disc, Titles, More titles still has them.").arg(counted(decoys, QStringLiteral("decoy %1 is").arg(unit()), QStringLiteral("decoy %1s are").arg(unit())));
-    if (repairCount > 0) {
-        facts << (kind == QLatin1String("bluray")
-                      ? QStringLiteral("The disc's playlists, clip information and stream files disagree in %1:").arg(counted(repairCount, QStringLiteral("place"), QStringLiteral("places")))
-                      : QStringLiteral("The disc's tables disagreed in %1:").arg(counted(repairCount, QStringLiteral("place"), QStringLiteral("places"))));
-        const int shown = qMin(4, int(repairs.size()));
-        for (int i = 0; i < shown; i++)
-            facts << QStringLiteral("  %1").arg(repairs[i]);
-        if (repairCount > shown)
-            facts << QStringLiteral("  and %1 more.").arg(repairCount - shown);
-    }
-    if (paddedSectors > 0)
-        facts << QStringLiteral("So far %1 of the disc couldn't be read and %2 taken as empty.").arg(counted(paddedSectors, QStringLiteral("sector"), QStringLiteral("sectors")), paddedSectors == 1 ? QStringLiteral("was") : QStringLiteral("were"));
-    if (!facts.isEmpty())
-        out << QString() << facts;
-    out << QString() << QStringLiteral("This comes from reading the disc's index, never from unlocking anything: a copy-protected disc is refused.");
-    return out.join(QLatin1Char('\n'));
 }
 
 } // namespace wmp

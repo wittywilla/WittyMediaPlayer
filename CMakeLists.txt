@@ -48,8 +48,9 @@ qt_add_library(wmpcore STATIC
     src/ui/controlbar.h src/ui/controlbar.cpp
     src/ui/subtitlepaint.h src/ui/subtitlepaint.cpp
     src/ui/imagedialog.h src/ui/imagedialog.cpp
-    src/ui/settingsdialog.h src/ui/settingsdialog.cpp
-    src/ui/mainwindow.h src/ui/mainwindow.cpp
+    src/sdui/sduiview.h src/sdui/sduiview.cpp
+    src/sdui/pagehost.h src/sdui/pagehost.cpp
+    src/ui/mainwindow.h src/ui/mainwindow.cpp src/ui/mainwindow_pages.cpp
     src/testscript.h src/testscript.cpp
 )
 target_compile_definitions(wmpcore PUBLIC WMP_VERSION="${PROJECT_VERSION}" QT_NO_CAST_FROM_BYTEARRAY)
@@ -65,20 +66,33 @@ qt_add_shaders(wmpcore "wmp_shaders"
         src/shaders/overlay.frag
 )
 
+# The server's themes and design tokens: copies, made by scripts/sync-themes.sh (--check says
+# whether they are up to date). Never edit them by hand.
 qt_add_resources(wmpcore "wmp_themes"
     PREFIX "/themes"
     BASE resources/themes
     FILES
-        resources/themes/dark.json
-        resources/themes/dark-blue.json
-        resources/themes/dark-gold.json
-        resources/themes/dark-green.json
-        resources/themes/dark-orange.json
-        resources/themes/dark-pink.json
-        resources/themes/dark-purple.json
-        resources/themes/dark-red.json
-        resources/themes/dark-teal.json
+        resources/themes/default.json
+        resources/themes/midnight.json
+        resources/themes/cinema.json
+        resources/themes/evergreen.json
         resources/themes/oled.json
+        resources/themes/light.json
+        resources/themes/paper.json
+        resources/themes/contrast.json
+        resources/themes/aeroday.json
+        resources/themes/aeroaurora.json
+        resources/themes/aeromeadow.json
+        resources/themes/aerosunset.json
+        resources/themes/cable.json
+        resources/themes/satellite.json
+        resources/themes/teletext.json
+)
+qt_add_resources(wmpcore "wmp_tokens"
+    PREFIX "/"
+    BASE resources
+    FILES
+        resources/tokens.json
 )
 
 # The app's icon in its own windows, the About box and, on Linux, the task bar: the same

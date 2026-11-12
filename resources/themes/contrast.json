@@ -1,0 +1,107 @@
+{
+  "id": "contrast",
+  "name": "High contrast",
+  "description": "Black and white with bright yellow, for the clearest reading.",
+  "author": "WittyMediaServer",
+  "version": "4",
+  "scheme": "dark",
+  "builtin": true,
+  "preview": {
+    "bg": "#000000",
+    "surface": "#141414",
+    "text": "#ffffff",
+    "accent": "#ffe14d"
+  },
+  "colors": {
+    "bg": "#000000",
+    "bg2": "#000000",
+    "bg3": "#141414",
+    "bg4": "#2b2b2b",
+    "fg": "#ffffff",
+    "fg2": "#e8e8e8",
+    "fg3": "#d0d0d0",
+    "accent": "#ffe14d",
+    "accentHover": "#ffd400",
+    "accentFg": "#000000",
+    "accentText": "#ffe14d",
+    "brandAccent": "#ffe14d",
+    "danger": "#ff9c9c",
+    "ok": "#6df2b8",
+    "warn": "#ffc95c",
+    "border": "#ffffff66",
+    "borderStrong": "#ffffff33",
+    "controlLine": "#b0b0b0",
+    "hover": "#ffffff12",
+    "pressed": "#ffffff1f",
+    "accentSoft": "#ffe14d24",
+    "accentLine": "#ffe14d73",
+    "okSoft": "#6df2b821",
+    "warnSoft": "#ffc95c21",
+    "dangerSoft": "#ff9c9c1c",
+    "focus": "#ffe14d",
+    "onImage": "#ffffff",
+    "scrim": "#000000ad",
+    "overlay": "#00000099"
+  },
+  "radius": 10,
+  "shape": {
+    "radius": 10,
+    "card": 10,
+    "button": 10,
+    "field": 10,
+    "row": 10,
+    "thumb": 6,
+    "chip": 999,
+    "badge": 4,
+    "image": 14,
+    "sheet": 14,
+    "dialog": 20,
+    "pill": 999,
+    "focusWidth": 2,
+    "focusOffset": 2,
+    "focusScale": 1
+  },
+  "type": {
+    "display": [
+      "Inter",
+      "Segoe UI Variable Text",
+      "system-ui",
+      "-apple-system",
+      "Segoe UI",
+      "Roboto",
+      "Helvetica",
+      "Arial",
+      "sans-serif"
+    ],
+    "body": [
+      "Inter",
+      "Segoe UI Variable Text",
+      "system-ui",
+      "-apple-system",
+      "Segoe UI",
+      "Roboto",
+      "Helvetica",
+      "Arial",
+      "sans-serif"
+    ],
+    "mono": [
+      "ui-monospace",
+      "Cascadia Mono",
+      "SFMono-Regular",
+      "Menlo",
+      "Consolas",
+      "monospace"
+    ],
+    "weights": {
+      "body": 400,
+      "medium": 500,
+      "strong": 600,
+      "heading": 650
+    }
+  },
+  "tv": {
+    "ringColor": "#ffffff",
+    "heroScrim": 0.88,
+    "tvText": "#ffffff"
+  }
+}

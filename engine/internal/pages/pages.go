@@ -166,11 +166,11 @@ var Actions = []string{
 	"app.openFile", "app.openFolder", "app.open", "app.makeImage", "app.clearRecent", "app.forget",
 	"app.vlc.set", "app.vlc.folder",
 	"app.modules.check", "app.modules.install", "app.modules.back", "app.modules.atStart",
-	"app.theme.set", "app.theme.import", "app.finish.set",
+	"app.theme.set", "app.theme.import", "app.theme.remove", "app.finish.set",
 	"app.cd.toggle", "app.cd.all", "app.cd.none", "app.cd.play", "app.cd.copy", "app.cd.stop", "app.cd.image", "app.cd.lookup",
 	"app.cd.format", "app.cd.quality", "app.cd.folder", "app.cd.secure", "app.cd.offset", "app.cd.template",
 	"app.disc.choose", "app.disc.makeMain", "app.disc.forget", "app.disc.locks", "app.disc.forced",
-	"app.remote.key", "app.remote.close", "app.firstRun.done",
+	"app.remote.key", "app.remote.page", "app.remote.close", "app.firstRun.done",
 }
 
 // ---------------------------------------------------------------- builder

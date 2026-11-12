@@ -13,7 +13,8 @@
 #include "../video/videoview.h"
 #include "controlbar.h"
 #include "imagedialog.h"
-#include "settingsdialog.h"
+#include "../sdui/pagehost.h"
+#include "../sdui/sduiview.h"
 #include "../media/vlcplayback.h"
 #include "subtitlepaint.h"
 #include "theme.h"
@@ -149,7 +150,8 @@ MainWindow::MainWindow(bool noAudioDevice, QWidget *parent)
     if (settings_.contains(QStringLiteral("window/geometry")))
         restoreGeometry(settings_.value(QStringLiteral("window/geometry")).toByteArray());
 
-    Themes::apply(qApp, Themes::load(settings_.value(QStringLiteral("theme"), QStringLiteral("dark")).toString()));
+    Themes::setFlat(settings_.value(QStringLiteral("flatLook"), false).toBool());
+    Themes::apply(qApp, Themes::load(settings_.value(QStringLiteral("theme"), QStringLiteral("default")).toString()));
 
     player_ = new Player(this);
     player_->initAudio(noAudioDevice);
@@ -325,6 +327,10 @@ MainWindow::MainWindow(bool noAudioDevice, QWidget *parent)
     layoutOverlays();
     applyEngine();
     lookForModuleUpdates();
+    // The first time, the Look is chosen before anything else. Not when the window is made for a
+    // test or a screenshot run, which has no audio device.
+    if (!noAudioDevice && !settings_.contains(QStringLiteral("lookChosen")))
+        QTimer::singleShot(0, this, [this] { showPage(QStringLiteral("look"), true); });
 }
 
 MainWindow::~MainWindow()
@@ -396,6 +402,10 @@ void MainWindow::buildMenus()
     actMain_ = menuDisc_->addAction(QStringLiteral("Play main feature"), disc_, &DiscController::playMain);
     actWhy_ = menuDisc_->addAction(QStringLiteral("Why this title…"), this, &MainWindow::showWhy);
     actWhy_->setObjectName(QStringLiteral("actWhy"));
+    actGuide_ = menuDisc_->addAction(QStringLiteral("Disc guide…"), this, [this] { showPage(QStringLiteral("disc")); });
+    actGuide_->setObjectName(QStringLiteral("actGuide"));
+    actHealth_ = menuDisc_->addAction(QStringLiteral("Disc health…"), this, [this] { showPage(QStringLiteral("diagnosis")); });
+    actHealth_->setObjectName(QStringLiteral("actHealth"));
     // The viewer's own film for a disc, when the engine picked another: kept on this
     // computer by the disc's fingerprint, and undone here.
     actMakeMain_ = menuDisc_->addAction(QStringLiteral("Play this as the main feature from now on"), this, &MainWindow::makeThisTheFeature);
@@ -436,21 +446,8 @@ void MainWindow::buildMenus()
     actFull_ = view->addAction(QStringLiteral("Full screen\tF"), this, [this] { setFullscreen(!fullscreen_); });
     actViz_ = view->addAction(QStringLiteral("Visualizer\tV"), this, [this] { setVisualizer(!visualizerShowing()); });
     actViz_->setCheckable(true);
-    QMenu *themes = view->addMenu(QStringLiteral("Theme"));
-    auto *group = new QActionGroup(this);
-    const QString currentTheme = Themes::current().id;
-    for (const QString &id : Themes::ids()) {
-        const Theme t = Themes::load(id);
-        QAction *a = themes->addAction(t.name);
-        a->setCheckable(true);
-        a->setChecked(id == currentTheme);
-        group->addAction(a);
-        connect(a, &QAction::triggered, this, [this, id] {
-            Themes::apply(qApp, Themes::load(id));
-            settings_.setValue(QStringLiteral("theme"), id);
-            update();
-        });
-    }
+    view->addAction(QStringLiteral("&Look…"), this, [this] { showPage(QStringLiteral("look")); });
+    view->addAction(QStringLiteral("&WittyRemote"), QKeySequence(QStringLiteral("Ctrl+R")), this, &MainWindow::showRemote);
 
     QMenu *help = menuBar()->addMenu(QStringLiteral("&Help"));
     help->addAction(QStringLiteral("Keyboard shortcuts"), this, [this] {
@@ -459,20 +456,7 @@ void MainWindow::buildMenus()
                            "F: full screen, Esc: leave it\nA: next audio track\nS: next subtitle track\nN and P: next and previous chapter\n"
                            "Number keys: go to a chapter\nV: visualizer, for music. While it's full screen: Left and Right change the effect, R random, S favourite, + and - strength\n\nOn a disc:\nArrow keys and Enter: choose in the disc's menu\nM: disc menu\nT: title menu"));
     });
-    help->addAction(QStringLiteral("About WittyMediaPlayer"), this, [this] {
-        QMessageBox::about(this, QStringLiteral("About WittyMediaPlayer"),
-            QStringLiteral("<b>WittyMediaPlayer %1</b><br>Plays video, audio, CDs, DVDs and Blu-rays on this computer, and copies CDs. "
-                           "It collects nothing, and nothing leaves the computer unless you press a button that says so: "
-                           "looking a CD up sends only its track layout to MusicBrainz.<br><br>"
-                           "WittyMediaPlayer, developed by WittyWilla. GNU GPL v3.0 or later.<br>"
-                           "Uses WittyCD, WittyDVD, WittyBluray and WittyDisc, developed by WittyWilla, under the GNU AGPL v3.0 or later.<br>"
-                           "Uses Qt and FFmpeg under the LGPL: they're separate libraries in its folder, which you can replace. "
-                           "FFmpeg here includes the LAME MP3 encoder (LGPL) and the Opus, Vorbis and Ogg libraries (BSD), for copying CDs. "
-                           "CD names and covers come from MusicBrainz and the Cover Art Archive. "
-                           "See the licenses folder.<br><br>"
-                           "If you choose it in Settings, playback can use the <b>VLC libraries</b> from a VLC on your computer. %2")
-                .arg(QCoreApplication::applicationVersion(), SettingsDialog::vlcCredit()));
-    });
+    help->addAction(QStringLiteral("About WittyMediaPlayer"), this, [this] { showPage(QStringLiteral("about")); });
     rebuildRecent();
     rebuildDiscMenus();
     rebuildTrackMenus();
@@ -480,50 +464,12 @@ void MainWindow::buildMenus()
 
 void MainWindow::buildStartPage()
 {
-    start_ = new QWidget(central_);
+    pages_ = new PageHost(engine_, [this] { return pageState(); }, this);
+    connect(pages_, &PageHost::activated, this, &MainWindow::handleAction);
+    start_ = new SduiView(central_);
     start_->setObjectName(QStringLiteral("startPage"));
     start_->setAttribute(Qt::WA_StyledBackground);
-    auto *outer = new QVBoxLayout(start_);
-    outer->setContentsMargins(40, 40, 40, 40);
-    outer->addStretch(2);
-    auto *brand = new QLabel(QStringLiteral("WittyMediaPlayer"), start_);
-    brand->setProperty("role", QStringLiteral("brand"));
-    brand->setAlignment(Qt::AlignCenter);
-    outer->addWidget(brand);
-    auto *tag = new QLabel(QStringLiteral("Video, audio, DVDs and Blu-rays, on this computer."), start_);
-    tag->setProperty("role", QStringLiteral("muted"));
-    tag->setAlignment(Qt::AlignCenter);
-    outer->addWidget(tag);
-    outer->addSpacing(24);
-    auto *row = new QHBoxLayout;
-    row->addStretch(1);
-    auto *open = new QPushButton(QStringLiteral("Open a file"), start_);
-    open->setProperty("role", QStringLiteral("primary"));
-    connect(open, &QPushButton::clicked, this, &MainWindow::openDialog);
-    auto *folder = new QPushButton(QStringLiteral("Open a disc folder"), start_);
-    connect(folder, &QPushButton::clicked, this, &MainWindow::openFolderDialog);
-    row->addWidget(open);
-    row->addWidget(folder);
-    row->addStretch(1);
-    outer->addLayout(row);
-    outer->addSpacing(8);
-    auto *hint = new QLabel(QStringLiteral("Or drop a file, a disc image or a disc folder on this window."), start_);
-    hint->setProperty("role", QStringLiteral("hint"));
-    hint->setAlignment(Qt::AlignCenter);
-    outer->addWidget(hint);
-    outer->addSpacing(20);
-    auto *drives = new QWidget(start_);
-    driveList_ = new QVBoxLayout(drives);
-    driveList_->setContentsMargins(0, 0, 0, 0);
-    driveList_->setSpacing(8);
-    drives->setMaximumWidth(560);
-    outer->addWidget(drives, 0, Qt::AlignHCenter);
-    outer->addStretch(3);
-    engineCredit_ = new QLabel(start_);
-    engineCredit_->setProperty("role", QStringLiteral("hint"));
-    engineCredit_->setAlignment(Qt::AlignCenter);
-    engineCredit_->setWordWrap(true);
-    outer->addWidget(engineCredit_);
+    pages_->show(start_, QStringLiteral("start"));
 }
 
 void MainWindow::refreshDrives()
@@ -533,10 +479,6 @@ void MainWindow::refreshDrives()
             return;
         const QJsonArray list = r.result.toArray();
         menuDrives_->clear();
-        while (QLayoutItem *it = driveList_->takeAt(0)) {
-            delete it->widget();
-            delete it;
-        }
         if (list.isEmpty()) {
             auto *none = menuDrives_->addAction(QStringLiteral("No disc drive found"));
             none->setEnabled(false);
@@ -549,33 +491,17 @@ void MainWindow::refreshDrives()
             QAction *a = menuDrives_->addAction(QStringLiteral("%1 (%2)").arg(name, what));
             a->setEnabled(media);
             connect(a, &QAction::triggered, this, [this, path] { openPath(path); });
-
-            auto *rowW = new QWidget;
-            rowW->setObjectName(QStringLiteral("driveRow"));
-            rowW->setAttribute(Qt::WA_StyledBackground);
-            auto *rowL = new QHBoxLayout(rowW);
-            rowL->setContentsMargins(14, 10, 10, 10);
-            auto *caption = new QLabel(QStringLiteral("%1  %2").arg(name, what), rowW);
-            auto *playBtn = new QPushButton(audio ? QStringLiteral("Open CD") : QStringLiteral("Play"), rowW);
-            playBtn->setAccessibleName(QStringLiteral("%1 the disc in %2").arg(audio ? QStringLiteral("Open") : QStringLiteral("Play"), name));
-            playBtn->setEnabled(media);
-            connect(playBtn, &QPushButton::clicked, this, [this, path] { openPath(path); });
-            auto *imgBtn = new QPushButton(QStringLiteral("Make image"), rowW);
-            imgBtn->setAccessibleName(QStringLiteral("Make a disc image from %1").arg(name));
-            imgBtn->setEnabled(media && !audio);
-            imgBtn->setVisible(!audio); // a CD's are made from its own screen
-            connect(imgBtn, &QPushButton::clicked, this, [this, path] { makeImage(path); });
-            rowL->addWidget(caption, 1);
-            rowL->addWidget(playBtn);
-            rowL->addWidget(imgBtn);
-            driveList_->addWidget(rowW);
         }
+        // The start page lists the drives too: the engine reads them itself when it makes the page.
+        pages_->reload(start_);
     });
 }
 
 void MainWindow::rebuildRecent()
 {
     menuRecent_->clear();
+    if (pages_ && start_)
+        pages_->reload(start_);
     const QStringList recent = settings_.value(QStringLiteral("recent")).toStringList();
     if (recent.isEmpty()) {
         menuRecent_->addAction(QStringLiteral("Nothing yet"))->setEnabled(false);
@@ -805,13 +731,10 @@ void MainWindow::rebuildDiscMenus()
     }
 }
 
-void MainWindow::updateFeatureActions()
+// Offered while a title plays that isn't the film as Play main feature has it.
+bool MainWindow::canMakeMain() const
 {
-    const bool on = disc_->active();
-    actForgetMain_->setVisible(on && disc_->pick().valid());
-    actForgetMain_->setEnabled(!disc_->fingerprint().isEmpty());
-    // Offered while a title plays that isn't the film as Play main feature has it.
-    bool offer = on && !disc_->fingerprint().isEmpty() && disc_->inTitle();
+    bool offer = disc_->active() && !disc_->fingerprint().isEmpty() && disc_->inTitle();
     if (offer) {
         const int ttn = disc_->ttn();
         const DiscGuide &guide = disc_->guide();
@@ -820,9 +743,22 @@ void MainWindow::updateFeatureActions()
         else
             offer = guide.present && guide.feature.valid() ? guide.feature.title != ttn && !guide.feature.titles.contains(ttn) : ttn != disc_->mainTitle();
     }
+    return offer;
+}
+
+void MainWindow::updateFeatureActions()
+{
+    const bool on = disc_->active();
+    actForgetMain_->setVisible(on && disc_->pick().valid());
+    actForgetMain_->setEnabled(!disc_->fingerprint().isEmpty());
+    const bool offer = canMakeMain();
     actMakeMain_->setVisible(offer);
     if (offer)
         actMakeMain_->setText(QStringLiteral("Play %1 %2 as the main feature from now on").arg(disc_->guide().unit()).arg(disc_->ttn()));
+    if (actGuide_)
+        actGuide_->setEnabled(on);
+    if (actHealth_)
+        actHealth_->setEnabled(on);
 }
 
 void MainWindow::rememberFeature(const DiscPick &pick)
@@ -866,10 +802,8 @@ void MainWindow::showWhy()
         return;
     // The counts of what couldn't be read grow as a disc plays: ask again first.
     disc_->refreshGuide([this] {
-        if (!disc_->active())
-            return;
-        const DiscGuide &guide = disc_->guide();
-        QMessageBox::information(this, guide.kind == QLatin1String("bluray") ? QStringLiteral("Why this playlist") : QStringLiteral("Why this title"), guide.whyText());
+        if (disc_->active())
+            showPage(QStringLiteral("why"));
     });
 }
 
@@ -1044,21 +978,22 @@ void MainWindow::lookForModuleUpdates()
 {
     if (!settings_.value(QStringLiteral("checkModules"), false).toBool())
         return;
-    auto *proc = new QProcess(this);
-    proc->setStandardErrorFile(QProcess::nullDevice());
-    connect(proc, &QProcess::finished, this, [this, proc] {
-        const QJsonObject o = QJsonDocument::fromJson(proc->readAllStandardOutput()).object();
-        proc->deleteLater();
+    runUpdater({QStringLiteral("--check")}, [this](const QJsonObject &o) {
         QStringList found;
-        for (const auto &v : o.value("offers").toArray())
-            if (!v.toObject().value("version").toString().isEmpty())
-                found << v.toObject().value("id").toString();
-        if (!found.isEmpty() && !player_->hasMedia())
-            setStatus(QStringLiteral("There are updates for this player's disc modules. See File, Settings."));
-        if (!found.isEmpty() && !player_->hasMedia())
-            engineCredit_->setText(QStringLiteral("There are updates for this player's disc modules. See File, Settings.")), engineCredit_->show();
+        offers_.clear();
+        for (const auto &v : o.value("offers").toArray()) {
+            const QJsonObject offer = v.toObject();
+            if (!offer.value("version").toString().isEmpty()) {
+                found << offer.value("id").toString();
+                offers_.insert(offer.value("id").toString(), offer.value("version").toString());
+            }
+        }
+        if (!found.isEmpty() && !player_->hasMedia()) {
+            startNotice_ = QStringLiteral("There are updates for this player's disc modules. See Settings, Disc modules.");
+            setStatus(startNotice_);
+            pages_->reload(start_);
+        }
     });
-    proc->start(EngineClient::updaterPath(), {QStringLiteral("--check")}, QIODevice::ReadOnly);
 }
 
 void MainWindow::applyEngine()
@@ -1075,8 +1010,7 @@ void MainWindow::applyEngine()
             setStatus(QStringLiteral("Using the built-in playback, because the VLC libraries aren't available. %1").arg(why));
     }
     player_->useVlc(on);
-    engineCredit_->setText(on ? QStringLiteral("Playing through the VLC %1 libraries, by VideoLAN and the VLC contributors (videolan.org).").arg(player_->vlcVersion()) : QString());
-    engineCredit_->setVisible(on);
+    pages_->reload(start_);
 }
 
 void MainWindow::setUseVlc(bool on)
@@ -1087,18 +1021,7 @@ void MainWindow::setUseVlc(bool on)
 
 void MainWindow::openSettings()
 {
-    QString folder = settings_.value(QStringLiteral("vlcFolder")).toString();
-    if (folder.isEmpty())
-        folder = VlcPlayback::detectFolder();
-    auto *dlg = new SettingsDialog(player_, engine_, settings_.value(QStringLiteral("useVlc"), false).toBool(), folder, settings_.value(QStringLiteral("checkModules"), false).toBool(), this);
-    dlg->setAttribute(Qt::WA_DeleteOnClose);
-    connect(dlg, &QDialog::accepted, this, [this, dlg] {
-        settings_.setValue(QStringLiteral("useVlc"), dlg->useVlc());
-        settings_.setValue(QStringLiteral("vlcFolder"), dlg->vlcFolder());
-        settings_.setValue(QStringLiteral("checkModules"), dlg->checkModulesAtStart());
-        applyEngine();
-    });
-    dlg->open();
+    showPage(QStringLiteral("settings"));
 }
 
 void MainWindow::makeImage(const QString &source)

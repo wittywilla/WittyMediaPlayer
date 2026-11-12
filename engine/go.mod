@@ -11,5 +11,6 @@ require (
 	github.com/wittywilla/wittydisc v0.2.0
 	github.com/wittywilla/wittydvd v0.3.1
 	github.com/wittywilla/wittydvd/wittydvdplayer v0.2.0
+	github.com/wittywilla/wittymediaserver v0.8.0-alpha.0
 	github.com/wittywilla/wittymodule v0.3.0
 )

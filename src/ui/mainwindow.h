@@ -4,10 +4,14 @@
 #pragma once
 
 #include <QJsonArray>
+#include <QJsonObject>
+#include <QMap>
+#include <QPointer>
 #include <QMainWindow>
 #include <QSettings>
 #include <QTimer>
 #include <QVector>
+#include <functional>
 #include <memory>
 
 #include "../disc/discmemory.h"
@@ -32,6 +36,9 @@ class EngineClient;
 class MessageOverlay;
 class Player;
 class VideoView;
+class PageHost;
+class PageDialog;
+class SduiView;
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -66,6 +73,9 @@ public:
 
     // Which libraries play the next thing opened: the viewer's choice, from Settings.
     void setUseVlc(bool on);
+    // Draws a page at 1000 by 760 off screen and saves it as a picture, for screenshots.
+    void grabPage(const QString &page, const QString &file);
+    PageHost *pages() const { return pages_; }
 
 protected:
     void closeEvent(QCloseEvent *e) override;
@@ -80,6 +90,18 @@ private:
     void buildMenus();
     void buildStartPage();
     void refreshDrives();
+    // The screens that are SDUI pages (src/sdui, engine/internal/pages): what the engine is
+    // told about the window, what an action on one does, and where one is shown.
+    QJsonObject pageState();
+    void handleAction(SduiView *from, const QJsonObject &action);
+    void showPage(const QString &page, bool firstRun = false);
+    void reloadPages();
+    void runUpdater(const QStringList &args, const std::function<void(const QJsonObject &)> &done);
+    void updateVlcStatus();
+    bool canMakeMain() const;
+    void chooseTheme(const QString &id);
+    void showRemote();
+    void pressRemoteKey(const QString &key);
     void rebuildTrackMenus();
     void rebuildDiscMenus();
     void showWhy();
@@ -122,16 +144,20 @@ private:
     CdPage *cd_ = nullptr;
     ControlBar *bar_ = nullptr;
     QWidget *central_ = nullptr;
-    QWidget *start_ = nullptr;
-    QVBoxLayout *driveList_ = nullptr;
+    SduiView *start_ = nullptr;
+    PageHost *pages_ = nullptr;
+    QPointer<PageDialog> dialog_, remote_;
+    QMap<QString, QString> offers_;
+    QString moduleNote_, vlcStatus_, startNotice_, themeNote_;
+    bool firstRun_ = false;
+    int remotePage_ = 0;
     QLabel *announcer_ = nullptr;
     MessageOverlay *message_ = nullptr;
     QLabel *audioCaption_ = nullptr;
     QLabel *notice_ = nullptr;
-    QLabel *engineCredit_ = nullptr;
     QVector<QAbstractButton *> hits_;
     QMenu *menuAudio_ = nullptr, *menuSubs_ = nullptr, *menuDisc_ = nullptr, *menuTitles_ = nullptr, *menuChapters_ = nullptr, *menuAngles_ = nullptr, *menuVersions_ = nullptr, *menuEpisodes_ = nullptr, *menuRecent_ = nullptr, *menuDrives_ = nullptr;
-    QAction *actStop_ = nullptr, *actMain_ = nullptr, *actWhy_ = nullptr, *actMakeMain_ = nullptr, *actForgetMain_ = nullptr, *actImage_ = nullptr, *actLocks_ = nullptr, *actForced_ = nullptr, *actFull_ = nullptr;
+    QAction *actStop_ = nullptr, *actGuide_ = nullptr, *actHealth_ = nullptr, *actMain_ = nullptr, *actWhy_ = nullptr, *actMakeMain_ = nullptr, *actForgetMain_ = nullptr, *actImage_ = nullptr, *actLocks_ = nullptr, *actForced_ = nullptr, *actFull_ = nullptr;
     QTimer tick_, hideControls_, driveWatch_, noticeTimer_;
     QSettings settings_;
     QString currentPath_;

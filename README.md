@@ -46,6 +46,14 @@ It doesn't do these yet:
 - Windows, and an AppImage for Linux that hasn't been tried on Linux yet. No package for macOS. Nothing in the design
   stops other systems: see [DESIGN.md](DESIGN.md).
 
+## How it looks
+
+Every screen that isn't playback (the start page, Settings, Disc modules, Look, a disc's guide and health, WittyRemote) is a page of
+[WittyMediaServer's server-driven UI](https://github.com/wittywilla/WittyMediaServer/blob/master/docs/SDUI.md), made on your computer by the player's own
+helper and drawn by the player. The themes are WittyMediaServer's fifteen, and **View, Look** imports your own (a ZIP of
+`theme.json` and `theme.css`, as [its THEMES guide](https://github.com/wittywilla/WittyMediaServer/blob/master/docs/THEMES.md) says). Aero's gloss and glass, and the
+Satellite theme's bevel, are drawn too; **Flat** turns them off. [DESIGN.md](DESIGN.md) says how.
+
 ## How to get it
 
 It needs Windows 10 version 1809 or newer, 64-bit. Download **`WittyMediaPlayer-<version>-windows-amd64.msi`** from
@@ -262,7 +270,7 @@ An image reads the same every time, so it needs neither.
 A disc that can't be read the ordinary way gets a plain message. WittyMediaPlayer has no way around copy protection on a CD
 any more than on a DVD.
 
-**The look:** the box at the top right switches between the Classic look and your app theme.
+**The look:** the box at the top right switches between the Classic look and your app theme (**View, Look**).
 
 **The visuals:** they're off until you turn them on, and the first time, you're told about flashing light and can choose
 calm mode. Bars, Scope, Rings and Plasma are drawn on the processor, so they run anywhere. **More effects** brings in
