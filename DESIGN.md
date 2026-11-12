@@ -229,6 +229,33 @@ through `FlashLimiter`, the same rule and limits as the shared guard: each tile 
 than it has lately been, so nothing can swing far enough, fast enough, to count as a flash under WCAG 2.3.1. A test runs strobes
 through it and counts.
 
+## Screens are SDUI documents (Design 2, decided 2026-11-12)
+
+Every screen that is not playback is a server-driven UI document, drawn by one renderer. The standalone player has no
+server, so it makes the documents itself.
+
+| Question | Decision | Why |
+|---|---|---|
+| Who makes a page | `engine/internal/pages`, in the Go engine: a stateless function. The window sends a page id, its size and a state (recent items, settings, the open disc's guide, the open CD); the engine adds what only it knows (drives, disc modules) and answers a document | The state lives in the window's settings, the knowledge in the engine. A pure function is testable in Go with no window, and the engine already speaks to the window |
+| What a document is | WittyMediaServer's own: `pkg/sdui` types, schema version 1, catalogue revision 7, components from the catalogue (Page, Stack, Split, Text, Notice, Button, List, ListItem, Card, Grid, Tabs, Track, Dock, KeyLegend, Banner) | A page the player makes and a page a server sends are the same thing to the renderer, so "when connected to a server" is a different source of documents, not a second renderer |
+| Why not `sdui.Render` | The pages are built as nodes directly, with the server's focus rule (`sdui.Focusable`) | Render resolves server sources (libraries, titles) and a closed set of actions. The player's data is a recent list, drives and a disc; its actions are `app.*` commands |
+| Actions | `navigate /page/<id>`, `navigate /` (start), and `command` with an op starting `app.` (`pages.Actions` is the whole list). The window carries one out, then asks for the page again | The catalogue's commands are server requests. `app.` ops are the app's own and a server never sends them; the renderer ignores ops it doesn't know, as the contract says |
+| Renderer | `src/sdui/`: Qt Widgets (`SduiView`), not QML | DESIGN.md's first decision stands: Widgets start faster and use far less memory on a small machine, and keep keyboard and screen-reader use. QML would add Qt Quick and a scene graph for a few lists |
+| Test corpus | The server's `pkg/sdui/conformance/fixtures`: every case's `expected.document` is drawn and its normalised layout compared with `expected.layout`, as the three other renderers do | Same proof as the web, Apple and Android renderers |
+| Stays native | The video picture, subtitles, the control bar, disc menus (drawn from the disc's own buttons), the visualizer surfaces, the CD page's LCD, seek bar and transport | They are playback, or draw something the catalogue has no component for |
+| Settings | In the standalone player File Settings is an SDUI page too (the owner asked). The server's rule that Settings stays hand-built is about the server's apps and is unchanged | |
+| When connected to a server | `SduiView` takes a document from any source. A server source (`/api/v1/sdui/pages/...` with the player's profile) needs the player to hold a server address and a sign-in, which it does not: nothing leaves the computer. Not built; the seam is `SduiHost::request` |  |
+
+**Where each screen comes from.** Start (open, drives, recent), Settings, Disc modules, Look, About, a disc's guide and
+Why this title, the disc's diagnosis (what could not be read, what was mended), WittyRemote (keys from the catalogue's
+`remote` table, dimmed by disc kind) and the CD screen's copying panel (tracks with ticks, format, names, careful
+reading, look up, make image) are pages in `engine/internal/pages`.
+
+**Themes** follow the pages: the window takes the server's token set (`themes/tokens.json`) and the fifteen built-in
+themes (`themes/<id>/theme.json`), imports theme ZIPs by the server's rules (variables and fonts only), and draws the
+finishes (gloss, glass, bevel) from a theme's `finish` block. The Look page is a grid of Cards, each wearing its own
+theme through the node's `tokens`.
+
 ## Other platforms
 
 Nothing here closes a door. The window is Qt, the helper is pure Go, and these are the places a port needs work:
