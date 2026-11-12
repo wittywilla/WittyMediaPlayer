@@ -29,11 +29,19 @@ import (
 // Nothing leaves the computer: the helper doesn't even contain network code, and
 // nothing here can load a decryption library.
 func TestNoNetworkCode(t *testing.T) {
-	out, err := exec.Command("go", "list", "-deps", ".").Output()
-	if err != nil {
-		t.Skip("go list:", err)
+	var pkgs []string
+	// WittyBluray loads a libbluray of the viewer's own at run time on some systems, for
+	// a second opinion: that loader must not be in the helper for any of them.
+	for _, goos := range []string{"windows", "darwin", "linux"} {
+		cmd := exec.Command("go", "list", "-deps", ".")
+		cmd.Env = append(os.Environ(), "GOOS="+goos, "CGO_ENABLED=0")
+		out, err := cmd.Output()
+		if err != nil {
+			t.Skip("go list:", err)
+		}
+		pkgs = append(pkgs, strings.Fields(string(out))...)
 	}
-	for _, pkg := range strings.Fields(string(out)) {
+	for _, pkg := range pkgs {
 		switch {
 		// WittyModule reads web addresses in a module's manifest: net/url only parses text, and net/netip
 		// comes with it. Neither can open a connection.
@@ -42,6 +50,8 @@ func TestNoNetworkCode(t *testing.T) {
 			t.Errorf("the helper imports %s", pkg)
 		case strings.Contains(pkg, "wittybluray/bdj"):
 			t.Errorf("the helper imports %s: this player runs no Java", pkg)
+		case strings.Contains(pkg, "libbluray"), strings.Contains(pkg, "purego"):
+			t.Errorf("the helper imports %s: it loads no disc library", pkg)
 		}
 	}
 }
@@ -166,6 +176,21 @@ func TestRealHelperPlaysADisc(t *testing.T) {
 		var reply openReply
 		if err := json.Unmarshal(b, &reply); err != nil || reply.Kind != c.kind || reply.Info == nil || reply.Presentation == nil {
 			t.Fatalf("%v %s", err, b)
+		}
+		// The disc has the same fingerprint from the helper as from the built-in copy.
+		bm := disc.NewManager("0.1.0")
+		bm.Dir = t.TempDir()
+		builtin := &helper{mgr: bm}
+		local, _, err := builtin.handle("open", mustJSON(t, map[string]any{"path": path}))
+		if err != nil {
+			t.Fatal(err)
+		}
+		lb, _ := json.Marshal(local)
+		var lr openReply
+		_ = json.Unmarshal(lb, &lr)
+		builtin.closeSession()
+		if reply.Fingerprint == "" || reply.Fingerprint != lr.Fingerprint {
+			t.Errorf("fingerprint through a helper %q, built in %q", reply.Fingerprint, lr.Fingerprint)
 		}
 		res, _, err = h.handle("title", mustJSON(t, map[string]any{"ttn": reply.Info.Main}))
 		if err != nil {

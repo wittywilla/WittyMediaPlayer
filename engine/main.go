@@ -200,10 +200,11 @@ func (h *helper) openDisc(path, kind string, drive bool, prefs json.RawMessage) 
 	return h.opened(res, kind)
 }
 
-// opened adds to a module's answer what kind of disc it is, and the module's guide to
-// the disc: which title is the film and why, and what else there is to choose. A
-// downloaded module from before the guide refuses that call; the disc plays all the
-// same, and the window shows no chooser.
+// opened adds to a module's answer what kind of disc it is, a fingerprint the window can
+// remember the viewer's choices by, and the module's guide to the disc: which title is
+// the film and why, and what else there is to choose. A downloaded module from before
+// the guide refuses that call; the disc plays all the same, and the window shows no
+// chooser.
 func (h *helper) opened(res any, kind string) (any, []byte, error) {
 	b, err := json.Marshal(res)
 	if err != nil {
@@ -215,6 +216,12 @@ func (h *helper) opened(res any, kind string) (any, []byte, error) {
 	}
 	k, _ := json.Marshal(kind)
 	out["kind"] = k
+	var info disc.Info
+	if err := json.Unmarshal(out["info"], &info); err == nil {
+		if fp := disc.Fingerprint(&info); fp != "" {
+			out["fingerprint"], _ = json.Marshal(fp)
+		}
+	}
 	if g, _, err := h.call(disc.MethodGuide, nil); err == nil {
 		if gb, err := json.Marshal(g); err == nil && len(gb) < maxGuide {
 			out["guide"] = gb
@@ -231,7 +238,9 @@ const maxGuide = 256 << 10
 
 // openReply answers an "open" call.
 type openReply struct {
-	Kind         string             `json:"kind"`
+	Kind string `json:"kind"`
+	// Fingerprint names the disc, from its index (disc.Fingerprint).
+	Fingerprint  string             `json:"fingerprint,omitempty"`
 	Info         *disc.Info         `json:"info,omitempty"`
 	Presentation *disc.Presentation `json:"presentation,omitempty"`
 	// Guide is the disc module's guide to the disc, as the module wrote it.

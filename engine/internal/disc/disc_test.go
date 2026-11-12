@@ -392,3 +392,33 @@ func TestEncryptedBlurayRefused(t *testing.T) {
 		t.Fatalf("an encrypted disc opened with: %v", err)
 	}
 }
+
+// A fingerprint follows what the disc's index says and nothing else: not the engine's
+// pick, not a length's fraction of a second, not the label (a folder's is its name).
+func TestFingerprint(t *testing.T) {
+	info := &Info{Kind: KindDVD, Label: "DISC", Main: 1, Titles: []TitleInfo{{N: 1, Duration: 5400.2, Chapters: 20, Main: true}, {N: 2, Duration: 60, Chapters: 1}}}
+	fp := Fingerprint(info)
+	if len(fp) != 32 {
+		t.Fatalf("fingerprint %q", fp)
+	}
+	same := *info
+	same.Main = 2
+	same.Label = "disc-folder"
+	same.Titles = []TitleInfo{{N: 1, Duration: 5399.9, Chapters: 20}, {N: 2, Duration: 60, Chapters: 1, Main: true}}
+	if Fingerprint(&same) != fp {
+		t.Error("the engine's pick changed the fingerprint")
+	}
+	for name, other := range map[string]*Info{
+		"length":   {Kind: KindDVD, Label: "DISC", Titles: []TitleInfo{{N: 1, Duration: 5402, Chapters: 20}, {N: 2, Duration: 60, Chapters: 1}}},
+		"kind":     {Kind: KindBluray, Label: "DISC", Titles: info.Titles},
+		"chapters": {Kind: KindDVD, Label: "DISC", Titles: []TitleInfo{{N: 1, Duration: 5400, Chapters: 21}, {N: 2, Duration: 60, Chapters: 1}}},
+		"titles":   {Kind: KindDVD, Label: "DISC", Titles: info.Titles[:1]},
+	} {
+		if Fingerprint(other) == fp {
+			t.Errorf("a different %s has the same fingerprint", name)
+		}
+	}
+	if Fingerprint(&Info{Kind: KindDVD}) != "" || Fingerprint(nil) != "" {
+		t.Error("a disc with no titles has a fingerprint")
+	}
+}

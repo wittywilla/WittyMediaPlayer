@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 
@@ -32,6 +33,9 @@ type synthDisc struct {
 	Editions      []int     `json:"editions"`         // Blu-ray
 	EpisodeStarts []float64 `json:"episodeStartsSec"` // DVD
 	PartStarts    []float64 `json:"playAllStartsSec"` // Blu-ray
+	Image         bool      `json:"image"`
+
+	fingerprint string
 }
 
 type synthSet struct {
@@ -71,25 +75,27 @@ func synthDiscs(t *testing.T, kind string) (string, []synthDisc) {
 
 // loadSynth is synthDiscs without a test to skip or fail: it says which in what it returns.
 func loadSynth(kind string) *synthSet {
-	repo, env := "WittyDVD", "WITTYDVD_SYNTH_OUT"
+	repo, mod, env := "WittyDVD", "github.com/wittywilla/wittydvd", "WITTYDVD_SYNTH_OUT"
 	if kind == disc.KindBluray {
-		repo, env = "WittyBluray", "WITTYBLURAY_SYNTH_OUT"
+		repo, mod, env = "WittyBluray", "github.com/wittywilla/wittybluray", "WITTYBLURAY_SYNTH_OUT"
 	}
 	s := synthSets[kind]
 	s.once.Do(func() {
-		// This test runs in engine/, and the repositories sit side by side.
-		engine, err := filepath.Abs(filepath.Join("..", "..", repo))
-		if err != nil {
-			s.fatal = err.Error()
-			return
-		}
-		if _, err := os.Stat(filepath.Join(engine, "export_synth_test.go")); err != nil {
-			s.skip = repo + " isn't checked out beside WittyMediaPlayer (no ../../" + repo + "/export_synth_test.go), so there are no synthetic discs to play"
-			return
-		}
 		gobin, err := exec.LookPath("go")
 		if err != nil {
 			s.skip = "the go command isn't on the PATH, so " + repo + " can't write its synthetic discs out"
+			return
+		}
+		// The engine as this build uses it: a checkout a go.work names, or the
+		// module cache's copy of the pinned version.
+		out, err := exec.Command(gobin, "list", "-m", "-f", "{{.Dir}}", mod).Output()
+		engine := strings.TrimSpace(string(out))
+		if err != nil || engine == "" {
+			s.skip = "the go command can't say where " + mod + " is, so there are no synthetic discs to play"
+			return
+		}
+		if _, err := os.Stat(filepath.Join(engine, "export_synth_test.go")); err != nil {
+			s.skip = "the " + repo + " this build uses (" + engine + ") can't write its synthetic discs out (no export_synth_test.go); a go.work naming a newer checkout can"
 			return
 		}
 		dir, err := os.MkdirTemp("", "wmp-synth-"+kind+"-")
@@ -177,8 +183,24 @@ func TestOpenDiscComesWithItsGuide(t *testing.T) {
 		t.Run(kind, func(t *testing.T) {
 			dir, list := synthDiscs(t, kind)
 			c := startHelper(t)
+			seen := map[string]synthDisc{}
 			for _, d := range list {
 				reply, g := openSynth(t, c, kind, filepath.Join(dir, filepath.FromSlash(d.Path)))
+				// Each disc has a name to remember choices by, its own, and the same
+				// whether it was written as a folder or an image.
+				if len(reply.Fingerprint) != 32 {
+					t.Errorf("%s: fingerprint %q", d.Name, reply.Fingerprint)
+				}
+				if o, ok := seen[reply.Fingerprint]; ok && strings.TrimSuffix(o.Path, ".iso") != strings.TrimSuffix(d.Path, ".iso") {
+					t.Errorf("%s has the same fingerprint as %s", d.Name, o.Name)
+				}
+				for _, o := range seen {
+					if d.Image && o.Path+".iso" == d.Path && disc.Fingerprint(reply.Info) != o.fingerprint {
+						t.Errorf("%s: the image's fingerprint differs from the folder's", d.Name)
+					}
+				}
+				d.fingerprint = reply.Fingerprint
+				seen[reply.Fingerprint] = d
 				if g.Kind != kind || g.Feature == nil || g.Feature.Title != d.Main || reply.Info.Main != d.Main {
 					t.Fatalf("%s: feature %+v, main title %d, want %d", d.Name, g.Feature, reply.Info.Main, d.Main)
 				}
@@ -299,4 +321,20 @@ func TestChoicesPlay(t *testing.T) {
 			t.Errorf("the exported discs cover editions %v, episodes %v, parts %v", editions, episodes, parts)
 		}
 	})
+}
+
+// A disc opened again has the same fingerprint, from the built-in copy as from the
+// helper's own process (TestRealHelperPlaysADisc).
+func TestFingerprintStaysTheSame(t *testing.T) {
+	dir, list := synthDiscs(t, disc.KindDVD)
+	path := filepath.Join(dir, filepath.FromSlash(list[0].Path))
+	var prints []string
+	for range 2 {
+		c := startHelper(t)
+		reply, _ := openSynth(t, c, disc.KindDVD, path)
+		prints = append(prints, reply.Fingerprint)
+	}
+	if prints[0] == "" || prints[0] != prints[1] {
+		t.Errorf("fingerprints %q", prints)
+	}
 }

@@ -86,6 +86,7 @@ type (
 	Presentation = session.Presentation
 	Action       = session.Action
 	Info         = session.Info
+	TitleInfo    = session.TitleInfo
 )
 
 // Error codes and plain messages, as the modules give them.
