@@ -100,6 +100,9 @@ func (b *builder) start() {
 			}
 			play := button(id+"-play", verb, "secondary", command("app.open", d.Path, props{"path": d.Path}))
 			play.Props["a11y"] = fmt.Sprintf("%s the disc in %s", verb, d.Name)
+			if !d.Media {
+				play.Action = nil // nothing to open: a button with no action is drawn disabled
+			}
 			var kids []nodeT
 			it := item(id, d.Name, driveWhat(d), "", "disc", nil)
 			kids = append(kids, it, play)
@@ -109,8 +112,6 @@ func (b *builder) start() {
 					img.Props["a11y"] = fmt.Sprintf("Make a disc image from %s", d.Name)
 					kids = append(kids, img)
 				}
-			} else {
-				play.Action = nil // nothing to open: a button with no action is drawn disabled
 			}
 			rows = append(rows, row(id+"-row", kids...))
 		}
