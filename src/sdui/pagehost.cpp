@@ -45,7 +45,10 @@ void PageHost::reload(SduiView *view)
             view->setDocument(errorDocument(r.ok() ? QStringLiteral("This page's document isn't one this player can draw.") : r.error));
         // A page that was made for the area it was asked at is drawn in it: ask again if the area changed since.
     });
-    connect(view, &SduiView::activated, this, [this, view](const QJsonObject &a) { emit activated(view, a); }, Qt::UniqueConnection);
+    if (!view->property("wmpWired").toBool()) { // once per view
+        view->setProperty("wmpWired", true);
+        connect(view, &SduiView::activated, this, [this, view](const QJsonObject &a) { emit activated(view, a); });
+    }
 }
 
 PageDialog::PageDialog(PageHost *host, const QString &page, QWidget *parent) : QDialog(parent), host_(host)

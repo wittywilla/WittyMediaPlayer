@@ -91,6 +91,8 @@ QJsonObject MainWindow::pageState()
     } else if (cdOn()) {
         kind = QStringLiteral("cd");
     }
+    if (cdOn())
+        st.insert(QStringLiteral("cd"), cd_->pageState());
     st.insert(QStringLiteral("remote"), QJsonObject{{"kind", kind}, {"angles", angles}, {"page", remotePage_}});
     return st;
 }
@@ -98,6 +100,8 @@ QJsonObject MainWindow::pageState()
 void MainWindow::reloadPages()
 {
     pages_->reload(start_);
+    if (cdOn())
+        pages_->reload(cd_->panel());
     if (dialog_)
         pages_->reload(dialog_->view());
     if (remote_)
@@ -217,6 +221,12 @@ void MainWindow::handleAction(SduiView *from, const QJsonObject &a)
     const QString op = s(a, "op"), item = s(a, "item");
     const QJsonObject params = a.value(QStringLiteral("params")).toObject();
     const QString path = params.value(QStringLiteral("path")).toString(item);
+
+    // The CD screen's panel is its own: it knows the disc.
+    if (cd_ && from == cd_->panel()) {
+        cd_->act(op, item, params);
+        return;
+    }
 
     if (op == QLatin1String("app.openFile")) {
         openDialog();

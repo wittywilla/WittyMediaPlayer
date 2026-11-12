@@ -168,7 +168,7 @@ var Actions = []string{
 	"app.modules.check", "app.modules.install", "app.modules.back", "app.modules.atStart",
 	"app.theme.set", "app.theme.import", "app.theme.remove", "app.finish.set",
 	"app.cd.toggle", "app.cd.all", "app.cd.none", "app.cd.play", "app.cd.copy", "app.cd.stop", "app.cd.image", "app.cd.lookup",
-	"app.cd.format", "app.cd.quality", "app.cd.folder", "app.cd.secure", "app.cd.offset", "app.cd.template",
+	"app.cd.album", "app.cd.rename", "app.cd.format", "app.cd.quality", "app.cd.folder", "app.cd.secure", "app.cd.offset", "app.cd.template",
 	"app.disc.choose", "app.disc.makeMain", "app.disc.forget", "app.disc.locks", "app.disc.forced",
 	"app.remote.key", "app.remote.page", "app.remote.close", "app.firstRun.done",
 }

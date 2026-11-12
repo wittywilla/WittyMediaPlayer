@@ -25,10 +25,11 @@ class QProgressBar;
 class QPushButton;
 class QSettings;
 class QSpinBox;
-class QTreeWidget;
-class QTreeWidgetItem;
 class QVBoxLayout;
 
+namespace wmp {
+class SduiView;
+}
 namespace wv {
 class VisualizerWidget;
 }
@@ -84,6 +85,11 @@ public:
     bool playing() const { return playing_; }
     QString statusText() const;
 
+    // The panel of tracks and copying choices: an SDUI page (engine/internal/pages, "cd"). The window draws it
+    // with its page host; this says what it holds, and carries out what is pressed on it.
+    SduiView *panel() const { return panel_; }
+    QJsonObject pageState() const;
+    void act(const QString &op, const QString &item, const QJsonObject &params);
     void setChecked(const QVector<int> &numbers);
     QVector<int> checkedTracks() const;
     void setRipOptions(const QString &format, const QString &quality, const QString &folder, const QString &nameTemplate, bool secure, int offset);
@@ -101,6 +107,8 @@ public:
     void setCover(const QByteArray &bytes);
 
 signals:
+    // What the panel shows has changed: ask for the page again.
+    void panelChanged();
     void backRequested();
     void fullscreenRequested();
     void volumeChanged(int percent);
@@ -123,7 +131,8 @@ private:
     void chooseFolder();
     void chooseImage();
     void saveOptions();
-    QTreeWidgetItem *itemFor(int number) const;
+    int rowOf(int number) const;
+    void changed();
     void markTrack(int number, int percent, const QString &text);
     RipJob buildJob() const;
     void fetchCover(const QString &releaseId);
@@ -160,17 +169,27 @@ private:
     bool visualFull_ = false;
     CoverView *coverView_ = nullptr;
     LcdReadout *lcd_ = nullptr;
-    QLabel *headTitle_ = nullptr, *nowTitle_ = nullptr, *nowArtist_ = nullptr, *statusLabel_ = nullptr, *visualName_ = nullptr, *offsetLabel_ = nullptr;
+    QLabel *headTitle_ = nullptr, *nowTitle_ = nullptr, *nowArtist_ = nullptr, *visualName_ = nullptr;
     SeekBar *seek_ = nullptr;
     VolumeBar *volume_ = nullptr;
     GelButton *playBtn_ = nullptr, *stopBtn_ = nullptr, *prevBtn_ = nullptr, *nextBtn_ = nullptr;
-    QTreeWidget *tree_ = nullptr;
-    QLineEdit *album_ = nullptr, *artist_ = nullptr, *year_ = nullptr, *folder_ = nullptr, *template_ = nullptr;
-    QComboBox *format_ = nullptr, *quality_ = nullptr, *look_ = nullptr;
-    QCheckBox *secure_ = nullptr;
-    QSpinBox *offset_ = nullptr;
-    QPushButton *visualsBtn_ = nullptr, *effectsBtn_ = nullptr, *chooseBtn_ = nullptr, *ripBtn_ = nullptr, *imageBtn_ = nullptr, *lookupBtn_ = nullptr, *stopRipBtn_ = nullptr, *visualBtn_ = nullptr, *backBtn_ = nullptr;
-    QProgressBar *overall_ = nullptr;
+    QComboBox *look_ = nullptr;
+    QPushButton *visualsBtn_ = nullptr, *effectsBtn_ = nullptr, *visualBtn_ = nullptr, *backBtn_ = nullptr;
+    // The panel's state: one row a track, and what the copy is to be.
+    struct Row {
+        bool checked = true;
+        QString title;
+        int percent = -1; // -1: not being copied
+        QString result;
+    };
+    QVector<Row> rows_;
+    QString album_, artist_, year_, status_, formatId_, qualityId_, folder_, template_, lookupNote_;
+    bool secure_ = true;
+    int offset_ = 0;
+    bool showOverall_ = false;
+    int overallPercent_ = 0;
+    SduiView *panel_ = nullptr;
+    QTimer panelTimer_;
     int ripTotal_ = 0, ripDone_ = 0;
     int ripPercent_ = 0;
 };

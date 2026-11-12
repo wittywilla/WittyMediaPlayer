@@ -190,6 +190,11 @@ MainWindow::MainWindow(bool noAudioDevice, QWidget *parent)
     connect(cd_, &CdPage::fullscreenRequested, this, [this] { setFullscreen(!fullscreen_); });
 
     buildStartPage();
+    // The CD screen's tracks and copying choices are an SDUI page like the rest.
+    connect(cd_, &CdPage::panelChanged, this, [this] {
+        if (cdOn())
+            pages_->reload(cd_->panel());
+    });
     buildMenus();
 
     volume_ = settings_.value(QStringLiteral("volume"), 100).toInt();
@@ -837,6 +842,7 @@ void MainWindow::showCd(const QJsonObject &info)
     audioCaption_->hide();
     const CdInfo cd = CdInfo::fromJson(info);
     cd_->setDisc(cd);
+    pages_->show(cd_->panel(), QStringLiteral("cd"));
     cd_->setVolumePercent(volume_);
     cd_->show();
     cd_->raise();

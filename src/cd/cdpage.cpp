@@ -8,6 +8,7 @@
 #include "ui/theme.h"
 #include "visual/visualizer.h"
 #include "engine/engineclient.h"
+#include "sdui/sduiview.h"
 #include "wvwidget.h"
 
 #include <QAbstractButton>
@@ -52,31 +53,12 @@ const QColor kSteelLight(0xc8, 0xd6, 0xec), kSteelDark(0x4a, 0x5f, 0x8a);
 const QColor kGel(0x2f, 0xd6, 0xc0), kGelDeep(0x0b, 0x4f, 0x6a);
 const QColor kAmber(0xff, 0xb4, 0x3c), kAmberGhost(0x3a, 0x26, 0x0a), kLcdBack(0x0a, 0x08, 0x05);
 
-enum Column { ColNumber, ColTitle, ColLength, ColCopy };
-constexpr int kPercentRole = Qt::UserRole + 1;
 
 QString mmss(double seconds)
 {
     const int s = int(std::max(0.0, seconds));
     return QStringLiteral("%1:%2").arg(s / 60).arg(s % 60, 2, 10, QLatin1Char('0'));
 }
-
-// Column 3 of the list: a small bar behind the words.
-class CopyDelegate : public QStyledItemDelegate {
-public:
-    using QStyledItemDelegate::QStyledItemDelegate;
-    void paint(QPainter *p, const QStyleOptionViewItem &opt, const QModelIndex &index) const override
-    {
-        QStyledItemDelegate::paint(p, opt, index);
-        const QVariant v = index.data(kPercentRole);
-        if (!v.isValid())
-            return;
-        const int pct = v.toInt();
-        const QRect r = opt.rect.adjusted(3, opt.rect.height() - 6, -3, -2);
-        p->fillRect(r, QColor(0, 0, 0, 90));
-        p->fillRect(QRect(r.left(), r.top(), r.width() * pct / 100, r.height()), kGel);
-    }
-};
 
 } // namespace
 
@@ -339,49 +321,51 @@ CdPage::CdPage(Player *player, QSettings *settings, QWidget *parent)
         setStatus(QStringLiteral("The end of the disc."));
     });
 
+    // The panel is drawn again soon after something on it changes, not for every step of a copy.
+    panelTimer_.setSingleShot(true);
+    panelTimer_.setInterval(120);
+    connect(&panelTimer_, &QTimer::timeout, this, &CdPage::panelChanged);
+
     connect(ripper_, &CdRipper::trackStarted, this, [this](int n) {
         ripPercent_ = 0;
         markTrack(n, 0, QStringLiteral("Reading…"));
-        tree_->scrollToItem(itemFor(n));
     });
     connect(ripper_, &CdRipper::trackProgress, this, [this](int n, int pct) {
         ripPercent_ = pct;
         markTrack(n, pct, QStringLiteral("%1%").arg(pct));
-        overall_->setValue(ripTotal_ > 0 ? (ripDone_ * 100 + pct) / ripTotal_ : 0);
+        overallPercent_ = ripTotal_ > 0 ? (ripDone_ * 100 + pct) / ripTotal_ : 0;
+        changed();
     });
     connect(ripper_, &CdRipper::trackFinished, this, [this](const RipResult &r) {
         results_.push_back(r);
         ripDone_++;
-        QTreeWidgetItem *it = itemFor(r.number);
-        if (it) {
-            it->setData(ColCopy, kPercentRole, QVariant());
+        const int i = rowOf(r.number);
+        if (i >= 0) {
             const bool clean = r.ok && r.unreadable == 0;
-            it->setText(ColCopy, !r.ok ? QStringLiteral("Not copied") : clean ? (r.verified ? QStringLiteral("Done, checked") : QStringLiteral("Done")) : QStringLiteral("%1 bad sectors").arg(r.unreadable));
-            it->setToolTip(ColCopy, r.ok ? QStringLiteral("%1\nCRC %2, %3 retries\n%4").arg(r.quality, r.crc).arg(r.retries).arg(QDir::toNativeSeparators(r.path)) : r.error);
-            it->setForeground(ColCopy, clean ? (classic_ ? kGel : Themes::current().ok) : (classic_ ? kAmber : Themes::current().warn));
+            rows_[i].percent = -1;
+            rows_[i].result = !r.ok ? QStringLiteral("Not copied") : clean ? (r.verified ? QStringLiteral("Done, checked") : QStringLiteral("Done")) : QStringLiteral("%1 bad sectors").arg(r.unreadable);
         }
-        overall_->setValue(ripTotal_ > 0 ? ripDone_ * 100 / ripTotal_ : 0);
+        overallPercent_ = ripTotal_ > 0 ? ripDone_ * 100 / ripTotal_ : 0;
+        changed();
     });
     connect(ripper_, &CdRipper::finished, this, [this](bool stopped, const QString &message, const QString &report) {
         lastReport_ = report;
-        setBusyControls();
-        overall_->setVisible(false);
+        showOverall_ = false;
         int good = 0;
         for (const RipResult &r : results_)
             good += r.ok ? 1 : 0;
-        for (int i = 0; i < tree_->topLevelItemCount(); i++) {
-            QTreeWidgetItem *it = tree_->topLevelItem(i);
-            if (it->data(ColCopy, kPercentRole).isValid()) {
-                it->setData(ColCopy, kPercentRole, QVariant());
-                it->setText(ColCopy, stopped ? QStringLiteral("Stopped") : QString());
+        for (Row &row : rows_)
+            if (row.percent >= 0) {
+                row.percent = -1;
+                row.result = stopped ? QStringLiteral("Stopped") : QString();
             }
-        }
+        setBusyControls();
         if (stopped)
             setStatus(QStringLiteral("Stopped. %1 of %2 tracks were finished, and the unfinished file was removed.").arg(good).arg(ripTotal_));
         else if (!message.isEmpty())
             setStatus(message);
         else
-            setStatus(QStringLiteral("Copied %1 of %2 tracks to %3.").arg(good).arg(ripTotal_).arg(QDir::toNativeSeparators(folder_->text())));
+            setStatus(QStringLiteral("Copied %1 of %2 tracks to %3.").arg(good).arg(ripTotal_).arg(QDir::toNativeSeparators(folder_)));
         emit ripFinished();
     });
 }
@@ -543,184 +527,40 @@ void CdPage::build()
     transport->addWidget(volume_);
     now->addLayout(transport);
 
-    // The tracks.
-    auto *listPanel = new QWidget(this);
-    listPanel->setObjectName(QStringLiteral("cdPanel"));
-    listPanel->setAttribute(Qt::WA_StyledBackground);
-    auto *list = new QVBoxLayout(listPanel);
-    list->setContentsMargins(12, 12, 12, 12);
-    list->setSpacing(8);
-    middle->addWidget(listPanel, 6);
-
-    auto *names = new QGridLayout;
-    names->setHorizontalSpacing(8);
-    names->setVerticalSpacing(6);
-    const auto addEdit = [&](int row, int col, const QString &label, QLineEdit **out, int span = 1) {
-        auto *l = new QLabel(label, listPanel);
-        l->setProperty("role", QStringLiteral("hint"));
-        *out = new QLineEdit(listPanel);
-        (*out)->setAccessibleName(label);
-        l->setBuddy(*out);
-        names->addWidget(l, row, col);
-        names->addWidget(*out, row, col + 1, 1, span);
-    };
-    addEdit(0, 0, QStringLiteral("Album"), &album_, 3);
-    addEdit(1, 0, QStringLiteral("Artist"), &artist_);
-    addEdit(1, 2, QStringLiteral("Year"), &year_);
-    year_->setMaximumWidth(90);
-    list->addLayout(names);
-    connect(album_, &QLineEdit::textEdited, this, [this] { showTrack(); });
-    connect(artist_, &QLineEdit::textEdited, this, [this] { showTrack(); });
-
-    tree_ = new QTreeWidget(listPanel);
-    tree_->setObjectName(QStringLiteral("cdTracks"));
-    tree_->setAccessibleName(QStringLiteral("Tracks. Press Enter to play one, and tick the ones to copy."));
-    tree_->setColumnCount(4);
-    tree_->setHeaderLabels({QStringLiteral("#"), QStringLiteral("Title"), QStringLiteral("Time"), QStringLiteral("Copy")});
-    tree_->setRootIsDecorated(false);
-    tree_->setUniformRowHeights(true);
-    tree_->setAlternatingRowColors(true);
-    tree_->setSelectionMode(QAbstractItemView::SingleSelection);
-    tree_->setEditTriggers(QAbstractItemView::EditKeyPressed);
-    tree_->header()->setStretchLastSection(false);
-    tree_->header()->setSectionResizeMode(ColTitle, QHeaderView::Stretch);
-    tree_->header()->setSectionResizeMode(ColNumber, QHeaderView::Fixed);
-    tree_->header()->setSectionResizeMode(ColLength, QHeaderView::Fixed);
-    tree_->header()->setSectionResizeMode(ColCopy, QHeaderView::Fixed);
-    tree_->setColumnWidth(ColNumber, 72);
-    tree_->setColumnWidth(ColLength, 60);
-    tree_->setColumnWidth(ColCopy, 120);
-    tree_->setItemDelegateForColumn(ColCopy, new CopyDelegate(tree_));
-    connect(tree_, &QTreeWidget::itemActivated, this, [this](QTreeWidgetItem *it, int) { playTrack(tree_->indexOfTopLevelItem(it)); });
-    list->addWidget(tree_, 1);
-
-    auto *listRow = new QHBoxLayout;
-    auto *all = new QPushButton(QStringLiteral("All"), listPanel);
-    all->setAccessibleName(QStringLiteral("Tick every track"));
-    auto *none = new QPushButton(QStringLiteral("None"), listPanel);
-    none->setAccessibleName(QStringLiteral("Untick every track"));
-    const auto tickAll = [this](Qt::CheckState s) {
-        for (int i = 0; i < tree_->topLevelItemCount(); i++)
-            tree_->topLevelItem(i)->setCheckState(ColNumber, s);
-    };
-    connect(all, &QPushButton::clicked, this, [tickAll] { tickAll(Qt::Checked); });
-    connect(none, &QPushButton::clicked, this, [tickAll] { tickAll(Qt::Unchecked); });
-    lookupBtn_ = new QPushButton(QStringLiteral("Look up names"), listPanel);
-    lookupBtn_->setToolTip(QStringLiteral("Asks MusicBrainz what this disc is. Only the disc's track layout is sent, and only when you press this."));
-    connect(lookupBtn_, &QPushButton::clicked, this, &CdPage::lookUp);
-    listRow->addWidget(all);
-    listRow->addWidget(none);
-    listRow->addStretch(1);
-    listRow->addWidget(lookupBtn_);
-    list->addLayout(listRow);
-
-    // Copying.
-    auto *ripPanel = new QWidget(this);
-    ripPanel->setObjectName(QStringLiteral("cdPanel"));
-    ripPanel->setAttribute(Qt::WA_StyledBackground);
-    auto *rip = new QGridLayout(ripPanel);
-    rip->setContentsMargins(12, 10, 12, 10);
-    rip->setHorizontalSpacing(10);
-    rip->setVerticalSpacing(6);
-    outer->addWidget(ripPanel);
-    const auto hint = [&](const QString &text, QWidget *buddy) {
-        auto *l = new QLabel(text, ripPanel);
-        l->setProperty("role", QStringLiteral("hint"));
-        l->setBuddy(buddy);
-        return l;
-    };
-    format_ = new QComboBox(ripPanel);
-    format_->setAccessibleName(QStringLiteral("Format"));
-    format_->setToolTip(QStringLiteral("Written by FFmpeg (LGPL). MP3 uses LAME (LGPL), and Opus and Vorbis use Xiph.Org's libraries (BSD). See Help, About."));
-    for (const RipFormat &f : ripFormats())
-        format_->addItem(f.name, f.id);
-    quality_ = new QComboBox(ripPanel);
-    quality_->setAccessibleName(QStringLiteral("Quality"));
-    connect(format_, &QComboBox::currentIndexChanged, this, &CdPage::refillQualities);
-    folder_ = new QLineEdit(ripPanel);
-    folder_->setAccessibleName(QStringLiteral("Folder to copy to"));
-    chooseBtn_ = new QPushButton(QStringLiteral("Choose…"), ripPanel);
-    chooseBtn_->setAccessibleName(QStringLiteral("Choose the folder to copy to"));
-    connect(chooseBtn_, &QPushButton::clicked, this, &CdPage::chooseFolder);
-    template_ = new QLineEdit(ripPanel);
-    template_->setAccessibleName(QStringLiteral("How files are named"));
-    template_->setToolTip(QStringLiteral("You can use {albumartist} {artist} {album} {title} {track} {tracks} {disc} {year}. A slash makes a folder."));
-    secure_ = new QCheckBox(QStringLiteral("Check every read twice"), ripPanel);
-    secure_->setToolTip(QStringLiteral("Reads each track twice and again wherever the reads disagree. Slower, and how to be sure of a scratched disc."));
-    offset_ = new QSpinBox(ripPanel);
-    offset_->setRange(-5000, 5000);
-    offset_->setAccessibleName(QStringLiteral("Drive read offset, in samples"));
-    offset_->setToolTip(QStringLiteral("Most drives read a few samples early or late. Leave it at 0 unless you know your drive's figure."));
-    ripBtn_ = new QPushButton(QStringLiteral("Copy ticked tracks"), ripPanel);
-    ripBtn_->setProperty("role", QStringLiteral("primary"));
-    connect(ripBtn_, &QPushButton::clicked, this, &CdPage::startRip);
-    stopRipBtn_ = new QPushButton(QStringLiteral("Stop copying"), ripPanel);
-    connect(stopRipBtn_, &QPushButton::clicked, this, &CdPage::stopRip);
-    imageBtn_ = new QPushButton(QStringLiteral("Make image"), ripPanel);
-    imageBtn_->setToolTip(QStringLiteral("Copies the disc's audio to a .cue and .bin, which this player and WittyMediaServer can read."));
-    connect(imageBtn_, &QPushButton::clicked, this, &CdPage::chooseImage);
-
-    rip->addWidget(hint(QStringLiteral("Format"), format_), 0, 0);
-    rip->addWidget(format_, 0, 1);
-    rip->addWidget(hint(QStringLiteral("Quality"), quality_), 0, 2);
-    rip->addWidget(quality_, 0, 3);
-    rip->addWidget(hint(QStringLiteral("Folder"), folder_), 0, 4);
-    rip->addWidget(folder_, 0, 5);
-    rip->addWidget(chooseBtn_, 0, 6);
-    rip->addWidget(hint(QStringLiteral("Names"), template_), 1, 0);
-    rip->addWidget(template_, 1, 1, 1, 3);
-    auto *checks = new QHBoxLayout;
-    checks->addWidget(secure_);
-    checks->addSpacing(14);
-    offsetLabel_ = hint(QStringLiteral("Drive offset"), offset_);
-    checks->addWidget(offsetLabel_);
-    checks->addWidget(offset_);
-    checks->addStretch(1);
-    rip->addLayout(checks, 1, 4, 1, 3);
-    rip->setColumnStretch(1, 2);
-    rip->setColumnStretch(3, 2);
-    rip->setColumnStretch(5, 3);
-
-    auto *bottom = new QHBoxLayout;
-    statusLabel_ = new QLabel(ripPanel);
-    statusLabel_->setObjectName(QStringLiteral("cdStatus"));
-    statusLabel_->setWordWrap(true);
-    bottom->addWidget(statusLabel_, 1);
-    overall_ = new QProgressBar(ripPanel);
-    overall_->setRange(0, 100);
-    overall_->setFixedWidth(180);
-    overall_->setAccessibleName(QStringLiteral("All the tracks being copied"));
-    overall_->hide();
-    bottom->addWidget(overall_);
-    bottom->addWidget(imageBtn_);
-    bottom->addWidget(stopRipBtn_);
-    bottom->addWidget(ripBtn_);
-    rip->addLayout(bottom, 2, 0, 1, 7);
+    // The tracks and the copying choices: an SDUI page, drawn by the window's page host.
+    panel_ = new SduiView(this);
+    panel_->setObjectName(QStringLiteral("cdPanelPage"));
+    middle->addWidget(panel_, 6);
 
     // What was used last time.
-    const int fmt = format_->findData(settings_->value(QStringLiteral("cd/format"), QStringLiteral("flac")).toString());
-    format_->setCurrentIndex(qMax(0, fmt));
+    formatId_ = settings_->value(QStringLiteral("cd/format"), QStringLiteral("flac")).toString();
+    if (!ripFormat(formatId_))
+        formatId_ = ripFormats().first().id;
     refillQualities();
-    folder_->setText(settings_->value(QStringLiteral("cd/folder"), QStandardPaths::writableLocation(QStandardPaths::MusicLocation)).toString());
-    template_->setText(settings_->value(QStringLiteral("cd/template"), defaultRipTemplate()).toString());
-    secure_->setChecked(settings_->value(QStringLiteral("cd/secure"), true).toBool());
-    offset_->setValue(settings_->value(QStringLiteral("cd/offset"), 0).toInt());
+    folder_ = settings_->value(QStringLiteral("cd/folder"), QStandardPaths::writableLocation(QStandardPaths::MusicLocation)).toString();
+    template_ = settings_->value(QStringLiteral("cd/template"), defaultRipTemplate()).toString();
+    secure_ = settings_->value(QStringLiteral("cd/secure"), true).toBool();
+    offset_ = settings_->value(QStringLiteral("cd/offset"), 0).toInt();
     setBusyControls();
+}
+
+// What changed is on the panel soon.
+void CdPage::changed()
+{
+    if (!panelTimer_.isActive())
+        panelTimer_.start();
 }
 
 void CdPage::refillQualities()
 {
-    const QString id = format_->currentData().toString();
-    const RipFormat *f = ripFormat(id);
-    quality_->clear();
+    const RipFormat *f = ripFormat(formatId_);
     if (!f)
         return;
+    const QString last = settings_->value(QStringLiteral("cd/quality-%1").arg(formatId_)).toString();
+    qualityId_ = f->qualities.value(f->defaultQuality).id;
     for (const RipQuality &q : f->qualities)
-        quality_->addItem(q.label, q.id);
-    const QString last = settings_->value(QStringLiteral("cd/quality-%1").arg(id)).toString();
-    const int at = quality_->findData(last);
-    quality_->setCurrentIndex(at >= 0 && !last.isEmpty() ? at : f->defaultQuality);
-    quality_->setEnabled(f->qualities.size() > 1);
+        if (!last.isEmpty() && q.id == last)
+            qualityId_ = last;
 }
 
 QStringList CdPage::qualitiesOf(const QString &format) const
@@ -974,17 +814,14 @@ void CdPage::setDisc(const CdInfo &info)
     current_ = 0;
     results_.clear();
     lastReport_.clear();
+    lookupNote_.clear();
     cover_.clear();
     coverView_->setImage({});
-    album_->setText(info.title);
-    artist_->setText(info.performer);
-    year_->setText(info.date.left(4));
+    album_ = info.title;
+    artist_ = info.performer;
+    year_ = info.date.left(4);
     headTitle_->setText(info.drive ? QStringLiteral("Audio CD in %1").arg(info.path.left(2)) : QFileInfo(info.path).fileName());
     fillTracks();
-    // An image reads the same every time: these only mean something for a drive.
-    secure_->setVisible(info.drive);
-    offset_->setVisible(info.drive);
-    offsetLabel_->setVisible(info.drive);
     showTrack();
     setBusyControls();
     setStatus(info.warnings.isEmpty() ? QStringLiteral("%1 tracks.").arg(info.tracks.size()) : info.warnings.join(QLatin1Char(' ')));
@@ -996,21 +833,12 @@ void CdPage::setDisc(const CdInfo &info)
 
 void CdPage::fillTracks()
 {
-    tree_->clear();
+    rows_.clear();
     for (const CdTrack &t : info_.tracks) {
-        auto *it = new QTreeWidgetItem(tree_);
-        it->setFlags(it->flags() | Qt::ItemIsUserCheckable | Qt::ItemIsEditable);
-        it->setCheckState(ColNumber, Qt::Checked);
-        it->setText(ColNumber, QStringLiteral("%1").arg(t.number, 2, 10, QLatin1Char('0')));
-        it->setText(ColTitle, t.title.isEmpty() ? QStringLiteral("Track %1").arg(t.number) : t.title);
-        it->setText(ColLength, mmss(t.seconds()));
-        it->setTextAlignment(ColLength, Qt::AlignRight | Qt::AlignVCenter);
-        it->setData(ColNumber, Qt::UserRole, t.number);
-        if (t.preEmphasis)
-            it->setToolTip(ColTitle, QStringLiteral("This track was mastered with pre-emphasis. Copies keep the disc's samples as they are."));
+        Row r;
+        r.title = t.title.isEmpty() ? QStringLiteral("Track %1").arg(t.number) : t.title;
+        rows_.push_back(r);
     }
-    if (tree_->topLevelItemCount() > 0)
-        tree_->setCurrentItem(tree_->topLevelItem(0));
 }
 
 void CdPage::closeDisc()
@@ -1027,15 +855,12 @@ void CdPage::closeDisc()
 
 bool CdPage::handleKey(int key, QWidget *focus)
 {
-    const bool typing = qobject_cast<QLineEdit *>(focus) || qobject_cast<QComboBox *>(focus) || qobject_cast<QSpinBox *>(focus);
-    if (typing)
-        return false;
     // On its picture, the effects' own keys come first: the arrows change effect.
     if (effectsShowing() && (visualFull_ || effects_->view()->hasFocus()) && effects_->handleKey(key))
         return true;
     const bool onSlider = qobject_cast<QAbstractSlider *>(focus);
     const bool onButton = qobject_cast<QAbstractButton *>(focus);
-    const bool onList = focus == tree_ || (focus && tree_->isAncestorOf(focus));
+    const bool onList = focus && (focus == panel_ || panel_->isAncestorOf(focus));
     switch (key) {
     case Qt::Key_Space:
         // Space ticks a track in the list, and presses a focused button.
@@ -1116,8 +941,7 @@ void CdPage::playTrack(int index)
 void CdPage::togglePlay()
 {
     if (!streamOpen_) {
-        const auto *sel = tree_->currentItem();
-        playTrack(sel ? tree_->indexOfTopLevelItem(const_cast<QTreeWidgetItem *>(sel)) : 0);
+        playTrack(current_);
         return;
     }
     userPaused_ = !userPaused_;
@@ -1178,25 +1002,16 @@ void CdPage::next()
 void CdPage::showTrack()
 {
     const bool has = current_ >= 0 && current_ < info_.tracks.size();
-    for (int i = 0; i < tree_->topLevelItemCount(); i++) {
-        QTreeWidgetItem *it = tree_->topLevelItem(i);
-        QFont f = it->font(ColTitle);
-        f.setBold(i == current_ && streamOpen_);
-        it->setFont(ColTitle, f);
-    }
+    changed(); // the track playing is marked on the panel
     if (!has) {
         nowTitle_->setText(QStringLiteral("No disc"));
         nowArtist_->clear();
         return;
     }
-    QTreeWidgetItem *it = tree_->topLevelItem(current_);
-    nowTitle_->setText(it ? it->text(ColTitle) : QString());
-    if (it && streamOpen_ && tree_->currentItem() != it && !qobject_cast<QLineEdit *>(QApplication::focusWidget()))
-        tree_->setCurrentItem(it);
+    nowTitle_->setText(rows_.value(current_).title);
     const CdTrack &t = info_.tracks[current_];
-    const QString artist = t.performer.isEmpty() ? artist_->text() : t.performer;
-    const QString album = album_->text();
-    nowArtist_->setText(artist.isEmpty() ? album : album.isEmpty() ? artist : QStringLiteral("%1, %2").arg(artist, album));
+    const QString artist = t.performer.isEmpty() ? artist_ : t.performer;
+    nowArtist_->setText(artist.isEmpty() ? album_ : album_.isEmpty() ? artist : QStringLiteral("%1, %2").arg(artist, album_));
     seek_->setDuration(t.seconds());
 }
 
@@ -1235,12 +1050,13 @@ void CdPage::tick()
 
 QString CdPage::statusText() const
 {
-    return statusLabel_->text();
+    return status_;
 }
 
 void CdPage::setStatus(const QString &text)
 {
-    statusLabel_->setText(text);
+    status_ = text;
+    changed();
     emit statusChanged(text);
 }
 
@@ -1251,77 +1067,63 @@ bool CdPage::busy() const
 
 void CdPage::setBusyControls()
 {
-    const bool b = busy();
-    ripBtn_->setVisible(!b);
-    imageBtn_->setVisible(!b);
-    stopRipBtn_->setVisible(b);
-    ripBtn_->setEnabled(!info_.tracks.isEmpty());
-    imageBtn_->setEnabled(!info_.tracks.isEmpty());
-    format_->setEnabled(!b);
-    const RipFormat *f = ripFormat(format_->currentData().toString());
-    quality_->setEnabled(!b && f && f->qualities.size() > 1);
-    folder_->setEnabled(!b);
-    chooseBtn_->setEnabled(!b);
-    template_->setEnabled(!b);
-    secure_->setEnabled(!b && info_.drive);
-    offset_->setEnabled(!b && info_.drive);
-    backBtn_->setEnabled(!b);
-    lookupBtn_->setEnabled(!b && !lookup_ && !info_.discId.isEmpty());
+    backBtn_->setEnabled(!busy());
+    changed();
 }
 
 void CdPage::setChecked(const QVector<int> &numbers)
 {
-    for (int i = 0; i < tree_->topLevelItemCount(); i++) {
-        QTreeWidgetItem *it = tree_->topLevelItem(i);
-        it->setCheckState(ColNumber, numbers.contains(it->data(ColNumber, Qt::UserRole).toInt()) ? Qt::Checked : Qt::Unchecked);
-    }
+    for (int i = 0; i < rows_.size(); i++)
+        rows_[i].checked = numbers.contains(info_.tracks.value(i).number);
+    changed();
 }
 
 QVector<int> CdPage::checkedTracks() const
 {
     QVector<int> out;
-    for (int i = 0; i < tree_->topLevelItemCount(); i++) {
-        const QTreeWidgetItem *it = tree_->topLevelItem(i);
-        if (it->checkState(ColNumber) == Qt::Checked)
-            out << it->data(ColNumber, Qt::UserRole).toInt();
-    }
+    for (int i = 0; i < rows_.size(); i++)
+        if (rows_[i].checked)
+            out << info_.tracks.value(i).number;
     return out;
 }
 
 void CdPage::setRipOptions(const QString &format, const QString &quality, const QString &folder, const QString &nameTemplate, bool secure, int offset)
 {
-    format_->setCurrentIndex(format_->findData(format));
-    const int q = quality_->findData(quality);
-    if (q >= 0)
-        quality_->setCurrentIndex(q);
-    folder_->setText(folder);
+    if (ripFormat(format)) {
+        formatId_ = format;
+        refillQualities();
+    }
+    if (!quality.isEmpty() && qualitiesOf(formatId_).contains(quality))
+        qualityId_ = quality;
+    folder_ = folder;
     if (!nameTemplate.isEmpty())
-        template_->setText(nameTemplate);
-    secure_->setChecked(secure);
-    offset_->setValue(offset);
+        template_ = nameTemplate;
+    secure_ = secure;
+    offset_ = offset;
+    changed();
 }
 
 void CdPage::saveOptions()
 {
-    settings_->setValue(QStringLiteral("cd/format"), format_->currentData());
-    settings_->setValue(QStringLiteral("cd/quality-%1").arg(format_->currentData().toString()), quality_->currentData());
-    settings_->setValue(QStringLiteral("cd/folder"), folder_->text());
-    settings_->setValue(QStringLiteral("cd/template"), template_->text());
-    settings_->setValue(QStringLiteral("cd/secure"), secure_->isChecked());
-    settings_->setValue(QStringLiteral("cd/offset"), offset_->value());
+    settings_->setValue(QStringLiteral("cd/format"), formatId_);
+    settings_->setValue(QStringLiteral("cd/quality-%1").arg(formatId_), qualityId_);
+    settings_->setValue(QStringLiteral("cd/folder"), folder_);
+    settings_->setValue(QStringLiteral("cd/template"), template_);
+    settings_->setValue(QStringLiteral("cd/secure"), secure_);
+    settings_->setValue(QStringLiteral("cd/offset"), offset_);
 }
 
 RipJob CdPage::buildJob() const
 {
     RipJob job;
     job.source = info_.path;
-    job.format = format_->currentData().toString();
-    job.quality = quality_->currentData().toString();
-    job.folder = folder_->text().trimmed();
-    job.nameTemplate = template_->text().trimmed();
-    job.secure = secure_->isChecked() && info_.drive;
-    job.offset = info_.drive ? offset_->value() : 0;
-    job.album = album_->text().trimmed();
+    job.format = formatId_;
+    job.quality = qualityId_;
+    job.folder = folder_.trimmed();
+    job.nameTemplate = template_.trimmed();
+    job.secure = secure_ && info_.drive;
+    job.offset = info_.drive ? offset_ : 0;
+    job.album = album_.trimmed();
     const QVector<int> wanted = checkedTracks();
     for (int i = 0; i < info_.tracks.size(); i++) {
         const CdTrack &t = info_.tracks[i];
@@ -1329,21 +1131,21 @@ RipJob CdPage::buildJob() const
             continue;
         RipTrackJob j;
         j.number = t.number;
-        const QString title = tree_->topLevelItem(i)->text(ColTitle);
-        const QString albumArtist = artist_->text().trimmed();
+        const QString title = rows_.value(i).title;
+        const QString albumArtist = artist_.trimmed();
         const QString artist = t.performer.isEmpty() ? albumArtist : t.performer;
         j.names.artist = artist;
         j.names.albumArtist = albumArtist;
         j.names.album = job.album;
         j.names.title = title;
-        j.names.year = year_->text().trimmed();
+        j.names.year = year_.trimmed();
         j.names.track = t.number;
         j.names.tracks = info_.tracks.size();
         j.tags.title = title;
         j.tags.artist = artist;
         j.tags.album = job.album;
         j.tags.albumArtist = albumArtist;
-        j.tags.date = year_->text().trimmed();
+        j.tags.date = year_.trimmed();
         j.tags.isrc = t.isrc;
         j.tags.track = t.number;
         j.tags.trackTotal = info_.tracks.size();
@@ -1372,13 +1174,11 @@ void CdPage::startRip()
     results_.clear();
     ripTotal_ = job.tracks.size();
     ripDone_ = 0;
-    overall_->setValue(0);
-    overall_->show();
-    for (int i = 0; i < tree_->topLevelItemCount(); i++) {
-        QTreeWidgetItem *it = tree_->topLevelItem(i);
-        it->setData(ColCopy, kPercentRole, QVariant());
-        it->setText(ColCopy, checkedTracks().contains(it->data(ColNumber, Qt::UserRole).toInt()) ? QStringLiteral("Waiting") : QString());
-        it->setToolTip(ColCopy, {});
+    overallPercent_ = 0;
+    showOverall_ = true;
+    for (int i = 0; i < rows_.size(); i++) {
+        rows_[i].percent = -1;
+        rows_[i].result = rows_[i].checked ? QStringLiteral("Waiting") : QString();
     }
     setStatus(QStringLiteral("Copying %1 tracks…").arg(ripTotal_));
     ripper_->start(job);
@@ -1394,35 +1194,39 @@ void CdPage::stopRip()
     setStatus(busy() ? QStringLiteral("Stopping…") : statusText());
 }
 
-QTreeWidgetItem *CdPage::itemFor(int number) const
+int CdPage::rowOf(int number) const
 {
-    for (int i = 0; i < tree_->topLevelItemCount(); i++)
-        if (tree_->topLevelItem(i)->data(ColNumber, Qt::UserRole).toInt() == number)
-            return tree_->topLevelItem(i);
-    return nullptr;
+    for (int i = 0; i < info_.tracks.size(); i++)
+        if (info_.tracks[i].number == number)
+            return i;
+    return -1;
 }
 
 void CdPage::markTrack(int number, int percent, const QString &text)
 {
-    if (QTreeWidgetItem *it = itemFor(number)) {
-        it->setData(ColCopy, kPercentRole, percent);
-        it->setText(ColCopy, text);
-    }
+    const int i = rowOf(number);
+    if (i < 0 || i >= rows_.size())
+        return;
+    rows_[i].percent = percent;
+    rows_[i].result = text;
+    changed();
 }
 
 void CdPage::chooseFolder()
 {
-    const QString d = QFileDialog::getExistingDirectory(this, QStringLiteral("Copy to which folder?"), folder_->text());
-    if (!d.isEmpty())
-        folder_->setText(d);
+    const QString d = QFileDialog::getExistingDirectory(this, QStringLiteral("Copy to which folder?"), folder_);
+    if (!d.isEmpty()) {
+        folder_ = d;
+        changed();
+    }
 }
 
 void CdPage::chooseImage()
 {
-    QString name = album_->text().trimmed();
+    QString name = album_.trimmed();
     if (name.isEmpty())
         name = QStringLiteral("CD");
-    const QString suggested = QDir(folder_->text()).filePath(ripRelativePath(QStringLiteral("{album}"), {QString(), QString(), name, QString(), QString(), 1, 1, 0}, QStringLiteral("cue")));
+    const QString suggested = QDir(folder_).filePath(ripRelativePath(QStringLiteral("{album}"), {QString(), QString(), name, QString(), QString(), 1, 1, 0}, QStringLiteral("cue")));
     const QString p = QFileDialog::getSaveFileName(this, QStringLiteral("Save the CD image as"), suggested, QStringLiteral("CD image (*.cue)"));
     if (!p.isEmpty())
         makeImage(p);
@@ -1436,15 +1240,15 @@ void CdPage::makeImage(const QString &cuePath)
         stopPlaying();
     imageProc_ = new QProcess(this);
     imageProc_->setStandardErrorFile(QProcess::nullDevice());
-    overall_->setValue(0);
-    overall_->show();
+    overallPercent_ = 0;
+    showOverall_ = true;
     setStatus(QStringLiteral("Making an image of the disc…"));
     connect(imageProc_, &QProcess::readyReadStandardOutput, this, [this] {
         while (imageProc_ && imageProc_->canReadLine()) {
             const QJsonObject o = QJsonDocument::fromJson(imageProc_->readLine()).object();
             const QString ev = o.value(QStringLiteral("event")).toString();
             if (ev == QLatin1String("progress"))
-                overall_->setValue(o.value(QStringLiteral("percent")).toInt());
+                overallPercent_ = o.value(QStringLiteral("percent")).toInt(), changed();
             else if (ev == QLatin1String("done"))
                 setStatus(QStringLiteral("Image made: %1. %2").arg(QDir::toNativeSeparators(o.value(QStringLiteral("path")).toString()),
                                                                    o.value(QStringLiteral("verified")).toBool() ? QStringLiteral("It opens and matches the disc.") : QStringLiteral("It didn't match the disc when opened, so check it before relying on it.")));
@@ -1455,13 +1259,13 @@ void CdPage::makeImage(const QString &cuePath)
     connect(imageProc_, &QProcess::finished, this, [this] {
         imageProc_->deleteLater();
         imageProc_ = nullptr;
-        overall_->hide();
+        showOverall_ = false;
         setBusyControls();
         emit ripFinished();
     });
     imageProc_->start(EngineClient::enginePath(),
                       {QStringLiteral("--watch-stdin"), QStringLiteral("--cd-image"), info_.path, cuePath,
-                       secure_->isChecked() ? QStringLiteral("secure") : QStringLiteral("burst"), QString::number(info_.drive ? offset_->value() : 0)},
+                       secure_ ? QStringLiteral("secure") : QStringLiteral("burst"), QString::number(info_.drive ? offset_ : 0)},
                       QIODevice::ReadWrite);
     setBusyControls();
 }
@@ -1511,20 +1315,20 @@ void CdPage::lookUp()
 
 void CdPage::applyMatch(const QJsonObject &m)
 {
-    album_->setText(m.value(QStringLiteral("title")).toString());
-    artist_->setText(m.value(QStringLiteral("artist")).toString());
-    year_->setText(m.value(QStringLiteral("date")).toString().left(4));
+    album_ = m.value(QStringLiteral("title")).toString();
+    artist_ = m.value(QStringLiteral("artist")).toString();
+    year_ = m.value(QStringLiteral("date")).toString().left(4);
     const QJsonArray names = m.value(QStringLiteral("tracks")).toArray();
     for (const auto &v : names) {
         const QJsonObject t = v.toObject();
         const int position = t.value(QStringLiteral("number")).toInt() - 1;
         if (position < 0 || position >= info_.tracks.size())
             continue;
-        tree_->topLevelItem(position)->setText(ColTitle, t.value(QStringLiteral("title")).toString());
+        rows_[position].title = t.value(QStringLiteral("title")).toString();
         info_.tracks[position].performer = t.value(QStringLiteral("artist")).toString();
     }
     showTrack();
-    setStatus(QStringLiteral("Names from MusicBrainz. You can change any of them: select a track and press F2."));
+    setStatus(QStringLiteral("Names from MusicBrainz. You can change any of them: choose a track and press F2."));
     if (m.value(QStringLiteral("hasCover")).toBool())
         fetchCover(m.value(QStringLiteral("releaseId")).toString());
 }
@@ -1548,6 +1352,107 @@ void CdPage::setCover(const QByteArray &bytes)
         return;
     cover_ = bytes;
     coverView_->setImage(img);
+}
+
+QJsonObject CdPage::pageState() const
+{
+    QJsonArray tracks;
+    for (int i = 0; i < info_.tracks.size() && i < rows_.size(); i++) {
+        const CdTrack &t = info_.tracks[i];
+        tracks.append(QJsonObject{{"number", t.number}, {"title", rows_[i].title}, {"artist", t.performer}, {"durationSec", t.seconds()}, {"checked", rows_[i].checked},
+                                  {"percent", rows_[i].percent < 0 ? 0 : rows_[i].percent}, {"result", rows_[i].result}, {"playing", streamOpen_ && i == current_}, {"data", false}});
+    }
+    QJsonArray formats, qualities;
+    for (const RipFormat &f : ripFormats())
+        formats.append(f.name);
+    QString quality;
+    if (const RipFormat *f = ripFormat(formatId_))
+        for (const RipQuality &q : f->qualities) {
+            qualities.append(q.label);
+            if (q.id == qualityId_)
+                quality = q.label;
+        }
+    return {{"title", album_}, {"artist", artist_}, {"year", year_}, {"tracks", tracks}, {"format", ripFormat(formatId_) ? ripFormat(formatId_)->name : QString()},
+            {"formats", formats}, {"quality", quality}, {"qualities", qualities}, {"folder", QDir::toNativeSeparators(folder_)}, {"template", template_},
+            {"secure", secure_ && info_.drive}, {"offset", info_.drive ? offset_ : 0}, {"drive", info_.drive}, {"busy", busy()}, {"percent", showOverall_ ? overallPercent_ : 0},
+            {"status", status_}, {"lookup", lookupNote_}, {"report", lastReport_.isEmpty() ? QString() : QStringLiteral("A report of this copy is in the folder.")},
+            {"canLookUp", !lookup_ && !info_.discId.isEmpty() && !busy()}};
+}
+
+// What is pressed on the panel.
+void CdPage::act(const QString &op, const QString &item, const QJsonObject &params)
+{
+    const int row = rowOf(item.toInt());
+    if (op == QLatin1String("app.cd.toggle")) {
+        if (row >= 0)
+            rows_[row].checked = !rows_[row].checked;
+    } else if (op == QLatin1String("app.cd.all") || op == QLatin1String("app.cd.none")) {
+        for (Row &r : rows_)
+            r.checked = op == QLatin1String("app.cd.all");
+    } else if (op == QLatin1String("app.cd.play")) {
+        playTrack(row);
+    } else if (op == QLatin1String("app.cd.rename")) {
+        if (row >= 0) {
+            bool ok = false;
+            const QString name = QInputDialog::getText(this, QStringLiteral("Change the name"), QStringLiteral("Track %1").arg(item), QLineEdit::Normal, rows_[row].title, &ok);
+            if (ok && !name.trimmed().isEmpty()) {
+                rows_[row].title = name.trimmed();
+                showTrack();
+            }
+        }
+    } else if (op == QLatin1String("app.cd.album")) {
+        QString *field = item == QLatin1String("album") ? &album_ : item == QLatin1String("artist") ? &artist_ : &year_;
+        bool ok = false;
+        const QString v = QInputDialog::getText(this, QStringLiteral("Change"), item.left(1).toUpper() + item.mid(1), QLineEdit::Normal, *field, &ok);
+        if (ok) {
+            *field = v.trimmed();
+            showTrack();
+        }
+    } else if (op == QLatin1String("app.cd.lookup")) {
+        lookUp();
+    } else if (op == QLatin1String("app.cd.copy")) {
+        startRip();
+    } else if (op == QLatin1String("app.cd.stop")) {
+        stopRip();
+    } else if (op == QLatin1String("app.cd.image")) {
+        chooseImage();
+    } else if (op == QLatin1String("app.cd.format")) {
+        for (const RipFormat &f : ripFormats())
+            if (f.name == item) {
+                formatId_ = f.id;
+                refillQualities();
+            }
+        saveOptions();
+    } else if (op == QLatin1String("app.cd.quality")) {
+        if (const RipFormat *f = ripFormat(formatId_))
+            for (const RipQuality &q : f->qualities)
+                if (q.label == item)
+                    qualityId_ = q.id;
+        saveOptions();
+    } else if (op == QLatin1String("app.cd.folder")) {
+        chooseFolder();
+        saveOptions();
+    } else if (op == QLatin1String("app.cd.secure")) {
+        secure_ = params.value(QStringLiteral("on")).toBool();
+        saveOptions();
+    } else if (op == QLatin1String("app.cd.offset")) {
+        bool ok = false;
+        const int v = QInputDialog::getInt(this, QStringLiteral("Drive offset"), QStringLiteral("Samples (most drives: 0)"), offset_, -5000, 5000, 1, &ok);
+        if (ok) {
+            offset_ = v;
+            saveOptions();
+        }
+    } else if (op == QLatin1String("app.cd.template")) {
+        bool ok = false;
+        const QString v = QInputDialog::getText(this, QStringLiteral("How files are named"),
+                                                QStringLiteral("You can use {albumartist} {artist} {album} {title} {track} {tracks} {disc} {year}. A slash makes a folder."),
+                                                QLineEdit::Normal, template_, &ok);
+        if (ok && !v.trimmed().isEmpty()) {
+            template_ = v.trimmed();
+            saveOptions();
+        }
+    }
+    changed();
 }
 
 } // namespace wmp

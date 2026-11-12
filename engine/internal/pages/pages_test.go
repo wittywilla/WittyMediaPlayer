@@ -41,7 +41,7 @@ func state() State {
 		Disc: &Disc{Kind: "dvd", Label: "FILM", Guide: sampleGuide(), PlayingTitle: 9, Chosen: "v1"},
 		CD: &CD{Title: "Album", Artist: "Band", Formats: []string{"FLAC", "MP3"}, Format: "FLAC", Qualities: []string{"5", "8"}, Quality: "5",
 			Tracks:   []CDTrack{{Number: 1, Title: "One", DurationSec: 180, Checked: true}, {Number: 2, DurationSec: 200, Percent: 40}, {Number: 3, Data: true}},
-			Template: "{artist}/{title}"},
+			Template: "{artist}/{title}", Drive: true, CanLookUp: true},
 		Remote: RemoteState{Kind: "dvd", Angles: 1},
 	}
 }
@@ -308,5 +308,94 @@ func TestDocumentIsJSONAsTheServerWritesIt(t *testing.T) {
 		if _, ok := m[k]; !ok {
 			t.Errorf("no %q", k)
 		}
+	}
+}
+
+func textsOf(doc sdui.Document) string {
+	var all []string
+	walk(doc.Root, func(n sdui.Node) {
+		for _, k := range []string{"text", "title", "subtitle", "trailing", "label"} {
+			if s, ok := n.Props[k].(string); ok {
+				all = append(all, s)
+			}
+		}
+	})
+	return strings.Join(all, "\n")
+}
+
+// What the window's own "why this title" text said before the page replaced it: the reason, how
+// sure, the length, the parts, the warnings, and that nothing was unlocked.
+func TestWhyPageSaysEverythingTheOldTextDid(t *testing.T) {
+	req := request(PageWhy)
+	req.State.Disc = &Disc{Kind: "dvd", Label: "FILM", Guide: &Guide{
+		Feature: Choice{ID: "feature", Label: "Titles 7, 3, 9, 2", Title: 7, Titles: []int{7, 3, 9, 2}, DurationSec: 7200, Chapters: 30, OneStream: true},
+		Why:     "Title 7 is the main feature because the disc starts it by itself.", Level: "high", Confidence: 0.99,
+		Reasons: []string{"It plays first"}, Warnings: []string{"The disc has 9 decoy titles."},
+	}}
+	raw, err := Render(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	doc, _ := sdui.Unmarshal(raw)
+	got := textsOf(doc)
+	for _, want := range []string{"Title 7 is the main feature because the disc starts it by itself.", "high (99%).", "Length: 2:00:00, 30 chapters.",
+		"4 titles (7, 3, 9, 2). They play here as one film", "The disc has 9 decoy titles.", "never from unlocking anything"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("missing %q in:\n%s", want, got)
+		}
+	}
+	// A Blu-ray says playlist, and a module with no guide says why there is none.
+	req.State.Disc = &Disc{Kind: "bluray", Guide: &Guide{Feature: Choice{ID: "f", Label: "Playlist 00100", DurationSec: 6084.7, Chapters: 11}, Level: "medium", Confidence: 0.7}}
+	raw, _ = Render(req)
+	doc, _ = sdui.Unmarshal(raw)
+	if doc.Page.Title != "Why this playlist" {
+		t.Errorf("title %q", doc.Page.Title)
+	}
+	req.State.Disc = &Disc{Kind: "dvd"}
+	raw, _ = Render(req)
+	doc, _ = sdui.Unmarshal(raw)
+	if !strings.Contains(textsOf(doc), "from before it could say why") {
+		t.Errorf("no guide: %s", textsOf(doc))
+	}
+}
+
+func TestDiagnosisCountsWhatWasMendedAndLost(t *testing.T) {
+	req := request(PageDiagnosis)
+	req.State.Disc = &Disc{Kind: "bluray", Guide: &Guide{Feature: Choice{ID: "f"}, RepairCount: 5, Repairs: []string{"a", "b", "c", "d", "e"}, PaddedSectors: 2, Decoys: 9}}
+	raw, err := Render(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	doc, _ := sdui.Unmarshal(raw)
+	got := textsOf(doc)
+	for _, want := range []string{"playlists, clip information and stream files disagree in 5 places", "and 1 more", "Sectors that couldn't be read", "9"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("missing %q in:\n%s", want, got)
+		}
+	}
+	req.State.Disc = &Disc{Kind: "dvd", Guide: &Guide{Feature: Choice{ID: "f"}}}
+	raw, _ = Render(req)
+	doc, _ = sdui.Unmarshal(raw)
+	if !strings.Contains(textsOf(doc), "Nothing needed mending") {
+		t.Error("a clean disc says so")
+	}
+}
+
+func TestSettingsCreditsVLCWhereItIsChosen(t *testing.T) {
+	doc := decode(t, PageSettings)
+	if !strings.Contains(textsOf(doc), "VideoLAN") {
+		t.Error("the VLC credit must be on the page that chooses it")
+	}
+}
+
+func TestAGuideIsCutAndCleaned(t *testing.T) {
+	g := &Guide{Level: "weird", Confidence: 7, Decoys: -3, Warnings: []string{" ", "x"}}
+	for i := 0; i < 500; i++ {
+		g.Others = append(g.Others, Choice{ID: "t", Label: "T"})
+	}
+	g.Others = append(g.Others, Choice{Label: "no id"})
+	g.clean()
+	if len(g.Others) != maxChoices || g.Level != "low" || g.Confidence != 1 || g.Decoys != 0 || len(g.Warnings) != 1 {
+		t.Errorf("%d %s %v %d %v", len(g.Others), g.Level, g.Confidence, g.Decoys, g.Warnings)
 	}
 }

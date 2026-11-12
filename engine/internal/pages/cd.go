@@ -30,6 +30,9 @@ type CD struct {
 	Lookup   string `json:"lookup"`
 	Report   string `json:"report"`
 	ImageDir string `json:"imageDir"`
+	// Drive: the disc is in a drive, where careful reading and the drive offset mean something. CanLookUp: a lookup may start.
+	Drive     bool `json:"drive"`
+	CanLookUp bool `json:"canLookUp"`
 }
 
 // CDTrack is one track: its tick, and how its copy is going.
@@ -80,6 +83,11 @@ func (b *builder) cd() {
 	}
 	head = append(head, fmt.Sprintf("%d tracks", len(c.Tracks)))
 	b.add(text("album", title, "pageTitle"), caption("album-sub", strings.Join(head, " · ")))
+	b.add(list("names", "Names",
+		item("name-album", "Album", c.Title, "Change…", "edit", command("app.cd.album", "album", nil)),
+		item("name-artist", "Artist", c.Artist, "Change…", "edit", command("app.cd.album", "artist", nil)),
+		item("name-year", "Year", c.Year, "Change…", "edit", command("app.cd.album", "year", nil)),
+	))
 	if c.Status != "" {
 		tone := "info"
 		if c.Busy {
@@ -93,7 +101,8 @@ func (b *builder) cd() {
 	tracks := make([]nodeT, 0, len(c.Tracks))
 	for _, t := range c.Tracks {
 		p := props{"title": t.Title, "number": t.Number, "durationSec": int(t.DurationSec),
-			"checked": t.Checked, "itemId": fmt.Sprint(t.Number), "toggle": props{"op": "app.cd.toggle", "item": fmt.Sprint(t.Number)}}
+			"checked": t.Checked, "itemId": fmt.Sprint(t.Number), "toggle": props{"op": "app.cd.toggle", "item": fmt.Sprint(t.Number)},
+			"rename": props{"op": "app.cd.rename", "item": fmt.Sprint(t.Number)}}
 		if p["title"] == "" {
 			p["title"] = fmt.Sprintf("Track %d", t.Number)
 		}
@@ -119,10 +128,14 @@ func (b *builder) cd() {
 		tracks = append(tracks, n)
 	}
 	b.add(node("TrackList", "tracks", props{"showNumbers": true, "showArtist": c.Artist == "", "showDuration": true, "selectable": true}, tracks...))
+	lookup := button("lookup", "Look up names", "secondary", command("app.cd.lookup", "", nil))
+	if !c.CanLookUp {
+		lookup.Action = nil
+	}
 	b.add(row("select",
 		button("select-all", "Tick all", "ghost", command("app.cd.all", "", nil)),
 		button("select-none", "Tick none", "ghost", command("app.cd.none", "", nil)),
-		button("lookup", "Look up names", "secondary", command("app.cd.lookup", "", nil)),
+		lookup,
 	))
 	if c.Lookup != "" {
 		b.add(caption("lookup-note", c.Lookup))
@@ -131,16 +144,20 @@ func (b *builder) cd() {
 	if folder == "" {
 		folder = "Not chosen"
 	}
-	b.add(list("options", "Copy",
+	opts := []nodeT{
 		item("format", "Format", "", c.Format, "music", command("app.cd.format", next(c.Formats, c.Format), nil)),
 		item("quality", "Quality", "", c.Quality, "", command("app.cd.quality", next(c.Qualities, c.Quality), nil)),
 		item("folder", "Folder", folder, "Choose…", "folder", command("app.cd.folder", "", nil)),
-		item("template", "Names", c.Template, "Change…", "edit", command("app.cd.template", "", nil)),
-		item("secure", "Check every read twice", "Each track is read twice, and again wherever the two disagree. A spot that never reads becomes silence, and the report says how much.", onOff(c.Secure), "shield",
-			command("app.cd.secure", "", props{"on": !c.Secure})),
-		item("offset", "Drive offset", "Corrects a drive that reads a few samples early or late. Leave it at 0 unless you know your drive's figure.", fmt.Sprint(c.Offset), "settings",
-			command("app.cd.offset", "", nil)),
-	))
+		item("template", "Names of files", c.Template, "Change…", "edit", command("app.cd.template", "", nil)),
+	}
+	if c.Drive { // an image reads the same every time: these only mean something for a drive
+		opts = append(opts,
+			item("secure", "Check every read twice", "Each track is read twice, and again wherever the two disagree. A spot that never reads becomes silence, and the report says how much.", onOff(c.Secure), "shield",
+				command("app.cd.secure", "", props{"on": !c.Secure})),
+			item("offset", "Drive offset", "Corrects a drive that reads a few samples early or late. Leave it at 0 unless you know your drive's figure.", fmt.Sprint(c.Offset), "settings",
+				command("app.cd.offset", "", nil)))
+	}
+	b.add(list("options", "Copy", opts...))
 	copyBtn := button("copy", "Copy ticked tracks", "primary", command("app.cd.copy", "", nil))
 	imgBtn := button("image", "Make image", "secondary", command("app.cd.image", "", nil))
 	stop := button("stop", "Stop copying", "secondary", command("app.cd.stop", "", nil))
