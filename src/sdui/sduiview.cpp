@@ -100,6 +100,7 @@ public:
     }
 signals:
     void pressed();
+    void secondary(); // F2: the row's other action (a track's rename)
 
 protected:
     void mouseReleaseEvent(QMouseEvent *e) override
@@ -112,6 +113,8 @@ protected:
     {
         if (e->key() == Qt::Key_Return || e->key() == Qt::Key_Enter || e->key() == Qt::Key_Space)
             emit pressed();
+        else if (e->key() == Qt::Key_F2)
+            emit secondary();
         else
             QFrame::keyPressEvent(e);
     }
@@ -683,6 +686,12 @@ QWidget *SduiView::build(const QJsonObject &node, int depth, QWidget *parent, Ct
             auto *d = labelOf(duration(dur), QStringLiteral("caption"), f);
             d->setWordWrap(false);
             l->addWidget(d);
+        }
+        if (const QJsonObject rename = obj(p, "rename"); !rename.isEmpty()) {
+            const QJsonObject ract{{"type", "command"}, {"op", str(rename, "op")}, {"item", str(rename, "item")}};
+            connect(f, &ActionFrame::secondary, self, [self, ract] { emit self->activated(ract); });
+            if (!hasAction)
+                focusables_.append(f);
         }
         if (hasAction)
             wire(f);
