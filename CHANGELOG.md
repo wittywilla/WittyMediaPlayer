@@ -5,6 +5,7 @@ What changed in WittyMediaPlayer, newest first. What changed before it had a rep
 
 ## Unreleased
 
+- A new icon in the family's new look: a ring with a play button inside and a sky-blue dot, on the dark tile. It and the installer's pictures are now drawn by WittyMediaServer's genicon, the generator for every logo of the family (`scripts/sync-brand.sh`), which replaces this repository's own `engine/tools/genicon`.
 Version 0.1.3. Version 0.1.2 was tagged but never published, because its build failed on GitHub, so everything below
 arrives with 0.1.3.
 

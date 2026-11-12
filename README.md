@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="resources/icon-256.png" width="96" alt="">
+</p>
+
 # WittyMediaPlayer
 
 A desktop player for video, audio, DVDs and Blu-rays on your own computer, with real disc menus. It works straight from a drive, a disc image or a folder, with no server and no account. You need it if you want to play discs and files on a PC.
@@ -335,3 +339,11 @@ refused, nothing is decrypted, and you're responsible for having the rights to w
 third-party names here only describe what it works with, and belong to their owners. It's provided
 “as is”, with no warranty; see [LICENSE](LICENSE). Local law applies to how you use it. This isn't legal
 advice.
+
+## Its icon
+
+The icon (the family's ring with a play button inside and a sky-blue dot) and the Windows installer's pictures are
+drawn by WittyMediaServer's `scripts/genicon`, the one generator for every logo of the family (its `docs/BRAND.md`).
+Run `scripts/sync-brand.sh` with a WittyMediaServer checkout beside this one to redraw them, or with `--check` to see
+whether they are up to date. Never edit `resources/WittyMediaPlayer.ico`, `resources/icon.svg`, `resources/icon-256.png`
+or `resources/windows/*.bmp` by hand.

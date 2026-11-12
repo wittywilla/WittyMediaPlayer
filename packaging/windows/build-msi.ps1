@@ -36,13 +36,10 @@ foreach ($need in "WittyMediaPlayer.exe", "Uninstall WittyMediaPlayer.exe", "pac
 $work = Join-Path $OutDir (".msi-work-" + [Guid]::NewGuid())
 New-Item -ItemType Directory -Force $work | Out-Null
 try {
+  # The icon and the wizard's pictures, drawn by WittyMediaServer's genicon (scripts/sync-brand.sh).
   Copy-Item (Join-Path $root "resources\WittyMediaPlayer.ico") $work
-  Push-Location (Join-Path $root "engine")
-  try {
-    $env:GOOS = $null; $env:GOARCH = $null
-    go run ./tools/genicon -bitmaps $work
-    if ($LASTEXITCODE -ne 0) { throw "making the installer's pictures failed" }
-  } finally { Pop-Location }
+  Copy-Item (Join-Path $root "resources\windows\banner.bmp") $work
+  Copy-Item (Join-Path $root "resources\windows\welcome.bmp") $work
 
   # What Installed apps says it takes up.
   $sizeKB = [int64](((Get-ChildItem -LiteralPath $PackageDir -Recurse -File | Measure-Object Length -Sum).Sum) / 1024)
