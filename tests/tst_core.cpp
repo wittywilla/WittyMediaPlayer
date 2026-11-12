@@ -47,7 +47,6 @@
 #include <QTemporaryDir>
 #include <QTest>
 #include <QPushButton>
-#include <QStandardPaths>
 #include <QToolButton>
 #include <private/qzipwriter_p.h>
 
@@ -390,8 +389,7 @@ static QString makeZip(const QString &path, const QMap<QString, QByteArray> &fil
 // A theme ZIP is variables and fonts only, readable, and named by an id of its own.
 void Tests::themeImportFollowsTheServersRules()
 {
-    QStandardPaths::setTestModeEnabled(true);
-    QDir(Themes::importDir()).removeRecursively();
+    QDir(Themes::importDir()).removeRecursively(); // under the test's own settings folder
     const QByteArray json = R"({"id":"plum","name":"Plum","scheme":"dark"})";
     const QByteArray css = ":root { color-scheme: dark; --bg: #1a0f1e; --bg-2: #241429; --bg-3: #2e1a34; --bg-4: #3a2242; --fg: #f4e9f7; --fg-2: #cbb6d1;"
                            " --fg-3: #a98fb1; --accent: #d98cf0; --accent-fg: #1a0f1e; --radius: 6px; }\n";
@@ -434,7 +432,6 @@ void Tests::themeImportFollowsTheServersRules()
     QVERIFY(!Themes::importedIds().contains(QStringLiteral("plum")));
     QCOMPARE(Themes::load(QStringLiteral("plum")).id, QStringLiteral("default")); // a theme that has gone is the house look
     QVERIFY(!Themes::removeImported(QStringLiteral("default")));
-    QStandardPaths::setTestModeEnabled(false);
 }
 
 // The player's ten earlier themes became the server's fifteen: nobody is left without one.

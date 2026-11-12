@@ -17,6 +17,7 @@ import (
 var SettingsEntries = map[string]string{
 	"WittyMediaPlayer.ini":      "settings",
 	"WittyMediaPlayer.ini.lock": "settings",
+	"themes":                    "themes you imported",
 }
 
 // settingsTemp is the copy Qt writes before putting a new settings file in place.

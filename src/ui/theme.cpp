@@ -8,7 +8,7 @@
 #include <QFontDatabase>
 #include <QRegularExpression>
 #include <QSaveFile>
-#include <QStandardPaths>
+#include <QSettings>
 #include <private/qzipreader_p.h>
 #include <QFile>
 #include <QJsonDocument>
@@ -443,9 +443,11 @@ QIcon Themes::icon(const QString &name)
 
 // ------------------------------------------------------------------ imported themes
 
+// Beside the settings file (%APPDATA%\WittyMediaPlayer\themes), where the uninstaller looks.
 QString Themes::importDir()
 {
-    return QDir(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation)).filePath(QStringLiteral("themes"));
+    QSettings s(QSettings::IniFormat, QSettings::UserScope, QStringLiteral("WittyMediaPlayer"), QStringLiteral("WittyMediaPlayer"));
+    return QDir(QFileInfo(s.fileName()).absolutePath()).filePath(QStringLiteral("themes"));
 }
 
 QStringList Themes::importedIds()
