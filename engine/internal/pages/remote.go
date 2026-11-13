@@ -6,6 +6,7 @@ package pages
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/wittywilla/wittymediaserver/pkg/sdui"
 )
@@ -79,6 +80,9 @@ func (b *builder) remote() error {
 	label := kind
 	if k, ok := t.Kinds[kind]; ok && k.Label != "" {
 		label = k.Label
+	}
+	if strings.HasPrefix(label, "A ") {
+		label = "a " + label[2:] // "A video file" in the middle of a sentence
 	}
 	b.add(caption("remote-for", "For "+label+". Keys it doesn't use stay where they are, dimmed."))
 	pages := t.Pages

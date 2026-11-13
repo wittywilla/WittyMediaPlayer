@@ -439,11 +439,9 @@ QWidget *SduiView::build(const QJsonObject &node, int depth, QWidget *parent, Ct
         auto *l = new QLabel(text, host);
         l->setWordWrap(true);
         l->setProperty("role", role == QLatin1String("heading") ? QStringLiteral("heading") : QString());
-        QFont f = l->font();
-        f.setPixelSize(ctx.size(role));
-        if (role == QLatin1String("pageTitle") || role == QLatin1String("display") || role == QLatin1String("heading") || role == QLatin1String("title"))
-            f.setWeight(QFont::DemiBold);
-        l->setFont(f);
+        // The application's style sheet sets a size for every widget, so a size is set the same way.
+        const bool strong = role == QLatin1String("pageTitle") || role == QLatin1String("display") || role == QLatin1String("heading") || role == QLatin1String("title");
+        l->setStyleSheet(QStringLiteral("font-size: %1px;%2").arg(ctx.size(role)).arg(strong ? QStringLiteral(" font-weight: 600;") : QString()));
         l->setProperty("sduiRole", role == QLatin1String("caption") ? QStringLiteral("caption") : QString());
         return l;
     };
@@ -623,10 +621,7 @@ QWidget *SduiView::build(const QJsonObject &node, int depth, QWidget *parent, Ct
         auto *tile = new QLabel(str(p, "title").left(1).toUpper(), f);
         tile->setAlignment(Qt::AlignCenter);
         tile->setFixedHeight(72);
-        QFont tf = tile->font();
-        tf.setPixelSize(30);
-        tf.setWeight(QFont::DemiBold);
-        tile->setFont(tf);
+        tile->setStyleSheet(QStringLiteral("font-size: 30px; font-weight: 600;"));
         col->addWidget(tile);
         col->addWidget(labelOf(str(p, "title"), QStringLiteral("title"), f));
         if (!str(p, "subtitle").isEmpty())
