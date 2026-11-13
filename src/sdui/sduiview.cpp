@@ -295,7 +295,7 @@ void SduiView::clear()
 
 bool SduiView::setDocument(const QJsonObject &doc)
 {
-    if (doc.value(QStringLiteral("version")).toInt() != kSchema || doc.value(QStringLiteral("catalog")).toInt() != kCatalog)
+    if (doc.value(QStringLiteral("version")).toInt() != kSchema || doc.value(QStringLiteral("catalog")).toInt() > kCatalog || doc.value(QStringLiteral("catalog")).toInt() < 1)
         return false;
     const QJsonObject root = obj(doc, "root");
     if (str(root, "type") != QLatin1String("Page"))

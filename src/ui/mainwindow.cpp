@@ -340,6 +340,7 @@ MainWindow::MainWindow(bool noAudioDevice, QWidget *parent)
 
 MainWindow::~MainWindow()
 {
+    pages_->shutdown(); // the helper's last replies, as it stops, are no business of the pages
     qApp->removeEventFilter(this);
     // Closed with something still playing, what's going away mustn't call back in here.
     player_->disconnect(this);

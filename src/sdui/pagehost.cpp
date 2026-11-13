@@ -34,11 +34,11 @@ void PageHost::show(SduiView *view, const QString &page)
 void PageHost::reload(SduiView *view)
 {
     const QString page = pageOf(view);
-    if (page.isEmpty())
+    if (page.isEmpty() || closing_)
         return;
     QJsonObject params{{"page", page}, {"width", view->width()}, {"height", view->height()}, {"state", state_()}};
     engine_->call(QStringLiteral("pages"), params, [this, view = QPointer<SduiView>(view), page](const EngineReply &r) {
-        if (!view || pageOf(view) != page)
+        if (closing_ || !view || pageOf(view) != page)
             return;
         const QJsonObject doc = r.ok() ? r.result.toObject() : QJsonObject();
         if (!r.ok() || !view->setDocument(doc))

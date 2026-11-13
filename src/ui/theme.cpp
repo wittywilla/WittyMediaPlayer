@@ -505,6 +505,8 @@ QString badRule(const QString &raw, QMap<QString, QString> *vars, QStringList *f
         if (!root && !face)
             return selector;
         for (const QString &decl : body.split(QLatin1Char(';'), Qt::SkipEmptyParts)) {
+            if (decl.trimmed().isEmpty())
+                continue;
             const int colon = decl.indexOf(QLatin1Char(':'));
             if (colon < 0)
                 return selector + QStringLiteral(" { ") + decl.trimmed() + QStringLiteral(" }");

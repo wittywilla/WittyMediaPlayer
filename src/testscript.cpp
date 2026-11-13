@@ -113,6 +113,8 @@ struct Runner {
                 window->disc()->seekTo(arg.toDouble());
             else
                 window->player()->seek(arg.toDouble());
+        } else if (cmd == QLatin1String("theme")) {
+            window->useTheme(arg);
         } else if (cmd == QLatin1String("pagegrab")) {
             // pagegrab <page> <file>: a page of the SDUI renderer, drawn off screen at 1000 by 760.
             const QString page = arg.section(QLatin1Char(' '), 0, 0), file = arg.section(QLatin1Char(' '), 1);

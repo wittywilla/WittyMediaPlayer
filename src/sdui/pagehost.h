@@ -27,6 +27,8 @@ public:
     // Asks for the view's page again, with the window's state as it is now.
     void reload(SduiView *view);
     static QString pageOf(const SduiView *view);
+    // The window is going away: replies that arrive from here on are dropped.
+    void shutdown() { closing_ = true; }
 
     // A document for something that couldn't be made: one Notice.
     static QJsonObject errorDocument(const QString &message);
@@ -38,6 +40,7 @@ signals:
 private:
     EngineClient *engine_;
     StateFn state_;
+    bool closing_ = false;
 };
 
 // A page in a window of its own: Settings, Look, a disc's guide, WittyRemote.

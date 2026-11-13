@@ -76,6 +76,8 @@ public:
     // Draws a page at 1000 by 760 off screen and saves it as a picture, for screenshots.
     void grabPage(const QString &page, const QString &file);
     PageHost *pages() const { return pages_; }
+    // Wears a theme (by id) and remembers it: the Look page's choice, for scripted runs.
+    void useTheme(const QString &id) { chooseTheme(id); }
 
 protected:
     void closeEvent(QCloseEvent *e) override;
