@@ -13,7 +13,7 @@ permissions: {}
 
 env:
   # The tag of WittyVisualizer the player is built with.
-  VISUALIZER_TAG: v0.2.1
+  VISUALIZER_TAG: v0.3.0
 
 jobs:
   build:
