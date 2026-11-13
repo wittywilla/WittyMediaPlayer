@@ -1030,7 +1030,7 @@ void Tests::sduiDrawsAPage()
                              {"action", QJsonObject{{"type", "command"}, {"op", "app.openFile"}}}};
     const QJsonObject dimmed{{"type", "Button"}, {"id", "key-red"}, {"props", QJsonObject{{"label", "Red"}, {"dimmed", true}}}};
     const QJsonObject unknown{{"type", "Hologram"}, {"id", "holo"}, {"children", QJsonArray{button}}};
-    const QJsonObject doc{{"version", 1}, {"catalog", 7}, {"page", QJsonObject{{"id", "t"}, {"title", "T"}}},
+    const QJsonObject doc{{"version", 1}, {"catalog", 8}, {"page", QJsonObject{{"id", "t"}, {"title", "T"}}},
                           {"layout", QJsonObject{{"breakpoint", "large"}, {"text", QJsonObject{{"body", 14}}}, {"spacing", QJsonObject{{"s", 8}, {"m", 16}, {"l", 24}}}}},
                           {"root", QJsonObject{{"type", "Page"}, {"id", "page"}, {"props", QJsonObject{{"title", "T"}}}, {"children", QJsonArray{dimmed, unknown}}}}};
     QVERIFY(view.setDocument(doc));
@@ -1044,7 +1044,7 @@ void Tests::sduiDrawsAPage()
     QCOMPARE(spy.count(), 1);
     QCOMPARE(spy.at(0).at(0).toJsonObject().value(QStringLiteral("op")).toString(), QStringLiteral("app.openFile"));
     QJsonObject other = doc;
-    other.insert(QStringLiteral("catalog"), 8);
+    other.insert(QStringLiteral("catalog"), 9);
     QVERIFY(!view.setDocument(other));
     QCOMPARE(view.pageId(), QStringLiteral("t")); // unchanged
     // What can't be made is one Notice, not a blank window.

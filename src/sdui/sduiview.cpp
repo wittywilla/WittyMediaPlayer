@@ -28,7 +28,7 @@ namespace wmp {
 namespace {
 
 constexpr int kSchema = 1;
-constexpr int kCatalog = 7;
+constexpr int kCatalog = 8; // the catalogue revision this renderer knows (WittyMediaServer pkg/sdui CatalogRevision); an older document is drawn, a newer one refused
 constexpr int kMaxNodes = 4000; // a page is a screen, not a library: refuse a runaway document
 constexpr int kMaxDepth = 24;
 

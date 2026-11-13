@@ -77,7 +77,7 @@ func walk(n sdui.Node, f func(sdui.Node)) {
 func TestEveryPageIsAValidDocument(t *testing.T) {
 	for _, p := range allPages {
 		doc := decode(t, p)
-		if doc.Catalog != 7 || doc.Root.Type != "Page" || doc.Page.ID != p {
+		if doc.Catalog != sdui.CatalogRevision || doc.Root.Type != "Page" || doc.Page.ID != p {
 			t.Fatalf("%s: catalog %d root %s page %s", p, doc.Catalog, doc.Root.Type, doc.Page.ID)
 		}
 		seen := map[string]bool{}

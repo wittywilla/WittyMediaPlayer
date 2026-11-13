@@ -35,7 +35,6 @@ const (
 	PageDiagnosis   = "diagnosis"
 	PageRemote      = "remote"
 	PageCredits     = "about"
-	catalogRevision = 7
 )
 
 // Request is one call: the page, what the window knows, and how wide the window is.
@@ -207,7 +206,7 @@ func (b *builder) document() sdui.Document {
 	stampFocus(&root)
 	return sdui.Document{
 		Version: sdui.SchemaVersion,
-		Catalog: catalogRevision,
+		Catalog: sdui.CatalogRevision,
 		Page:    sdui.PageInfo{ID: b.id, Kind: "custom", Title: b.title, Icon: b.icon, Route: "/page/" + b.id},
 		Layout:  b.layout,
 		Root:    root,

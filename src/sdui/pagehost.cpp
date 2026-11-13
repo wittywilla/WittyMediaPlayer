@@ -20,7 +20,7 @@ QJsonObject PageHost::errorDocument(const QString &message)
 {
     QJsonObject notice{{"type", "Notice"}, {"id", "error"}, {"props", QJsonObject{{"tone", "danger"}, {"text", message}}}};
     QJsonObject root{{"type", "Page"}, {"id", "page"}, {"props", QJsonObject{{"title", "Something went wrong"}}}, {"children", QJsonArray{notice}}};
-    return {{"version", 1}, {"catalog", 7}, {"page", QJsonObject{{"id", "error"}, {"kind", "custom"}, {"title", "Something went wrong"}}},
+    return {{"version", 1}, {"catalog", 8}, {"page", QJsonObject{{"id", "error"}, {"kind", "custom"}, {"title", "Something went wrong"}}},
             {"layout", QJsonObject{{"breakpoint", "large"}, {"text", QJsonObject{{"body", 14}, {"title", 16}, {"caption", 12}}}, {"spacing", QJsonObject{{"s", 8}, {"m", 16}, {"l", 24}}}}},
             {"root", root}};
 }
