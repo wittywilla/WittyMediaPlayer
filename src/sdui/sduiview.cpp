@@ -513,7 +513,7 @@ QWidget *SduiView::build(const QJsonObject &node, int depth, QWidget *parent, Ct
         auto *w = new QWidget(parent);
         const bool isRow = type == QLatin1String("Grid") || str(p, "direction") == QLatin1String("row");
         const QString gapName = p.value(QStringLiteral("gap")).toString(type == QLatin1String("Grid") ? QStringLiteral("s") : QStringLiteral("m"));
-        mark(w, type == QLatin1String("Grid") ? QStringLiteral("grid") : QStringLiteral("none"), type == QLatin1String("Grid") ? str(p, "title") : QString());
+        mark(w, type == QLatin1String("Grid") ? QStringLiteral("list") : QStringLiteral("none"), type == QLatin1String("Grid") ? str(p, "title") : QString());
         if (isRow) {
             auto *fl = new FlowLayout(w, ctx.gap(gapName), ctx.gap(gapName));
             for (const auto &k : kids)
