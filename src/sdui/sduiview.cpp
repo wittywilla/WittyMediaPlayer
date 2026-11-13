@@ -386,6 +386,9 @@ QWidget *SduiView::build(const QJsonObject &node, int depth, QWidget *parent, Ct
         return empty;
     }
 
+    // As the kit has it: a grid is a list to assistive technology on a phone or a tablet.
+    const QString form = str(obj(doc_, "layout"), "formFactor");
+    const bool gridIsAList = !obj(doc_, "layout").value(QStringLiteral("focusEngine")).toBool() && form != QLatin1String("desktop") && form != QLatin1String("web") && !form.isEmpty();
     const auto mark = [&](QWidget *w, const QString &role, const QString &label) {
         w->setProperty("sduiId", id);
         w->setProperty("sduiType", type);
@@ -513,7 +516,7 @@ QWidget *SduiView::build(const QJsonObject &node, int depth, QWidget *parent, Ct
         auto *w = new QWidget(parent);
         const bool isRow = type == QLatin1String("Grid") || str(p, "direction") == QLatin1String("row");
         const QString gapName = p.value(QStringLiteral("gap")).toString(type == QLatin1String("Grid") ? QStringLiteral("s") : QStringLiteral("m"));
-        mark(w, type == QLatin1String("Grid") ? (str(node, "state") == QLatin1String("empty") ? QStringLiteral("list") : QStringLiteral("grid")) : QStringLiteral("none"), type == QLatin1String("Grid") ? str(p, "title") : QString());
+        mark(w, type == QLatin1String("Grid") ? (gridIsAList ? QStringLiteral("list") : QStringLiteral("grid")) : QStringLiteral("none"), type == QLatin1String("Grid") ? str(p, "title") : QString());
         if (isRow) {
             auto *fl = new FlowLayout(w, ctx.gap(gapName), ctx.gap(gapName));
             for (const auto &k : kids)
