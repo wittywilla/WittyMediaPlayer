@@ -3,8 +3,9 @@
 What changed in WittyMediaPlayer, newest first. What changed before it had a repository of its own is in the
 [WittyMediaServer changelog](https://github.com/wittywilla/WittyMediaServer/blob/master/CHANGELOG.md).
 
-## Unreleased
+## 0.1.3
 
+- Built on the disc helpers for module API 5 (`wittydvdplayer` and `wittyblurayplayer` 0.4.0, on WittyDVD and WittyBluray 0.5.1), WittyModule 0.5.4, WittyDisc 0.3.2, WittyCD 0.3.1 and WittyMediaServer 0.8.0-alpha's pages. The helper still contains no network code: the disc engines no longer link their module service (#18).
 - **Design 2: the screens are server-driven UI.** The start page (open, drives, recent), Settings (what plays your media, disc options), Disc modules, Look, About, a disc's guide, Why this title, Disc health and WittyRemote are now SDUI documents, the same kind WittyMediaServer sends its apps, made by the engine from the player's own data (`engine/internal/pages`) and drawn by one Qt renderer (`src/sdui`). Nothing about them needs a server. Playback, disc menus, the control bar and the visualizer stay native. **Disc, Disc guide** lists the film, its other cuts, episodes and the other titles; **Disc health** says what couldn't be read and what was mended; **View, WittyRemote** (Ctrl+R) is the disc remote, its keys from the catalogue, the ones a disc doesn't use dimmed and in place. The old Settings window and the message box for Why this title are gone. See DESIGN.md.
 - **Themes are the server's.** The fifteen themes of WittyMediaServer (Witty, Midnight, Cinema, Evergreen, True black, Light, Paper, High contrast, Aero Day, Aero Aurora, Aero Meadow, Aero Sunset, Cable blue, Satellite, Teletext) replace the ten dark ones; an earlier choice moves to the closest. **View, Look** has them as cards that wear their own colours, **Import a theme…** takes a ZIP by the server's rules (variables and fonts only, readable text, no way out of the ZIP), and Aero's gloss and glass, Satellite's bevel and the themes' scenes are drawn, with a **Flat** choice. The first time the player starts, the Look is chosen first. Copies are made by `scripts/sync-themes.sh`.
 
