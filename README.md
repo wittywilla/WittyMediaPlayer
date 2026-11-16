@@ -8,6 +8,17 @@ A desktop player for video, audio, DVDs and Blu-rays on your own computer, with 
 
 It's a standalone Qt app, not a module: it needs no [WittyMediaServer](https://github.com/wittywilla/WittyMediaServer), and shares that project's disc engines, themes and look ([wittymediaserver.com](https://wittymediaserver.com)). It's under the GNU GPL v3.0 or later.
 
+<p align="center">
+  <img src="docs/images/player-start.webp" width="49%" alt="The start page: open a file or a disc folder, the disc drives, and what played recently">
+  <img src="docs/images/player-cd-classic.webp" width="49%" alt="The CD screen in its classic look: the disc's tracks, names to change, and the player">
+</p>
+<p align="center">
+  <img src="docs/images/player-look.webp" width="49%" alt="Settings, Look: the same fifteen themes as WittyMediaServer">
+  <img src="docs/images/player-settings.webp" width="49%" alt="Settings, Playback">
+</p>
+
+<sub>WittyMediaPlayer 0.1.3 on Windows. The CD is an image of [Jazz Sampler](https://archive.org/details/Jazz_Sampler-9619), Kevin MacLeod, [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/); the recent files are from [Sintel](https://durian.blender.org/), Blender Foundation, [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/).</sub>
+
 ## What it does
 
 - **Plays ordinary files:** MKV, MP4, AVI, MPEG, TS, WebM, WMV, MP3, AAC, FLAC, Ogg, WAV and more, with audio and
