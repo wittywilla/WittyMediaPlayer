@@ -6,6 +6,17 @@
 
 A desktop player for video, audio, DVDs and Blu-rays on your own computer, with real disc menus. It works straight from a drive, a disc image or a folder, with no server and no account. You need it if you want to play discs and files on a PC.
 
+<p align="center">
+  <img src="docs/images/player-start.webp" width="49%" alt="The start page: open a file or a disc folder, the disc drives, and what played recently">
+  <img src="docs/images/player-cd-classic.webp" width="49%" alt="The CD screen in its classic look: the disc's tracks, names to change, and the player">
+</p>
+<p align="center">
+  <img src="docs/images/player-look.webp" width="49%" alt="Settings, Look: the same fifteen themes as WittyMediaServer">
+  <img src="docs/images/player-settings.webp" width="49%" alt="Settings, Playback">
+</p>
+
+<sub>WittyMediaPlayer 0.1.3 on Windows. The CD is an image of [Jazz Sampler](https://archive.org/details/Jazz_Sampler-9619), Kevin MacLeod, [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/); the recent files are from [Sintel](https://durian.blender.org/), Blender Foundation, [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/).</sub>
+
 ## What it does
 
 - **Plays ordinary files:** MKV, MP4, AVI, MPEG, TS, WebM, WMV, MP3, AAC, FLAC, Ogg, WAV and more, with
