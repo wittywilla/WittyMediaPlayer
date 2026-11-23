@@ -342,6 +342,8 @@ Run `scripts/sync-brand.sh` with a WittyMediaServer checkout beside this one to 
 whether they are up to date. Never edit `resources/WittyMediaPlayer.ico`, `resources/icon.svg`, `resources/icon-256.png`
 or `resources/windows/*.bmp` by hand.
 
+**Working on a Mac?** Start with WittyMediaServer's [MAC-START-HERE.md](https://github.com/wittywilla/WittyMediaServer/blob/v0.8.1-alpha/MAC-START-HERE.md): what to install, what to clone, and every Mac task in order: this repository's is item 7.8 (#24).
+
 ## Licence
 
 GNU GPL v3.0 (or later): see [LICENSE](LICENSE) and [NOTICE](NOTICE). If you redistribute it or build on it, please keep
