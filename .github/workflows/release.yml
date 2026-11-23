@@ -101,3 +101,26 @@ jobs:
           fail_on_unmatched_files: true
           prerelease: ${{ contains(github.ref_name, '-') }}
           generate_release_notes: true
+
+  # The website lists releases, but its own schedule can run an hour late, so a published
+  # release starts its build. That needs SITE_BUILD_TOKEN: a fine-grained token for wittywilla/WittyMediaServer.com
+  # only, with Actions read and write and nothing else (the server's docs/PUBLISHING.md, "The
+  # website, after a release"). Without it this only says so; a failure here never fails the release.
+  website:
+    needs: publish
+    if: github.event_name == 'push' && github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: Rebuild wittymediaserver.com
+        env:
+          GH_TOKEN: ${{ secrets.SITE_BUILD_TOKEN }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::notice::No SITE_BUILD_TOKEN: the website picks this up on its own schedule"
+            exit 0
+          fi
+          gh workflow run publish.yml -R wittywilla/WittyMediaServer.com --ref main \
+            && echo "Started the website's build" \
+            || echo "::warning::Couldn't start the website's build; it picks this up on its own schedule"
